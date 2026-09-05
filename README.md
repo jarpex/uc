@@ -4,6 +4,12 @@ LLM models leave a lot of typographic garbage and hallucinate Unicode in the mid
 Input: `UTF-8`.  
 Output: `UTF-8`.
 
+## Install via Homebrew
+
+```bash
+brew install --HEAD jarpex/formulae/uc
+```
+
 ## Build
 
 ```sh
