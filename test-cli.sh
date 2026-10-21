@@ -118,6 +118,23 @@ check_status "help" 0 "$UC" --help
 
 check_status "version" 0 "$UC" --version
 
+# Color.
+check "color always colorizes" 0 "foo$(printf '\033[0;31m')$(printf '\357\277\275')$(printf '\033[0m')bar" \
+  "$UC" --color=always "$(printf 'foo\302\240bar')"
+
+check "color never does not colorize" 0 "foo$(printf '\357\277\275')bar" \
+  "$UC" --color=never "$(printf 'foo\302\240bar')"
+
+check "color auto does not colorize a pipe" 0 "foo$(printf '\357\277\275')bar" \
+  "$UC" --color=auto "$(printf 'foo\302\240bar')"
+
+check "color with a separate argument" 0 "foo$(printf '\357\277\275')bar" \
+  "$UC" --color never "$(printf 'foo\302\240bar')"
+
+check_status "unknown color" 2 "$UC" --color=bogus "text"
+
+check_status "missing color argument" 2 "$UC" --color
+
 # No input on a terminal prints the usage.
 if command -v script >/dev/null 2>&1; then
     case $(uname -s) in

@@ -38,7 +38,8 @@ make PREFIX=/usr install
 ## Usage
 
 ```text
-usage: uc [-h] [-v] [-s] [-c] [-e encoding] [--check] [--] [text...]
+usage: uc [-h] [-v] [-s] [-c] [-e encoding] [--check] [--color when]
+             [--] [text...]
 
 options:
   -h, --help       show help
@@ -47,6 +48,7 @@ options:
   -c, --clear      clean output text
   -e, --encoding   target encoding: ascii, cp1252, cp1251
       --check      exit code 1 if problems were found
+      --color when colorize output: auto, always, never
 
 -e selects allowed character set; output remains UTF-8.
 ```

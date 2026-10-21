@@ -7,10 +7,18 @@
 
 #include "uc.h"
 
+enum color_mode
+{
+    COLOR_AUTO,
+    COLOR_ALWAYS,
+    COLOR_NEVER
+};
+
 static void usage(FILE *out)
 {
     fprintf(out,
-            "usage: uc [-h] [-v] [-s] [-c] [-e encoding] [--check] [--] [text...]\n"
+            "usage: uc [-h] [-v] [-s] [-c] [-e encoding] [--check] [--color when]\n"
+            "             [--] [text...]\n"
             "\n"
             "options:\n"
             "  -h, --help       show help\n"
@@ -19,6 +27,7 @@ static void usage(FILE *out)
             "  -c, --clear      clean output text\n"
             "  -e, --encoding   target encoding: ascii, cp1252, cp1251\n"
             "      --check      exit code 1 if problems were found\n"
+            "      --color when colorize output: auto, always, never\n"
             "\n"
             "modes:\n"
             "  default          highlight problematic characters\n"
@@ -93,6 +102,29 @@ static int parse_encoding(const char *s, enum uc_enc *enc)
     return -1;
 }
 
+static int parse_color(const char *s, enum color_mode *color)
+{
+    if (strcmp(s, "auto") == 0)
+    {
+        *color = COLOR_AUTO;
+        return 0;
+    }
+
+    if (strcmp(s, "always") == 0)
+    {
+        *color = COLOR_ALWAYS;
+        return 0;
+    }
+
+    if (strcmp(s, "never") == 0)
+    {
+        *color = COLOR_NEVER;
+        return 0;
+    }
+
+    return -1;
+}
+
 static int write_stdout(const char *buf, size_t len, void *arg)
 {
     (void)arg;
@@ -159,6 +191,8 @@ int main(int argc, char **argv)
     int mode_set = 0;
     int no_more_options = 0;
     int i;
+
+    enum color_mode color = COLOR_AUTO;
 
     memset(&opts, 0, sizeof(opts));
     opts.mode = UC_MODE_HIGHLIGHT;
@@ -276,6 +310,44 @@ int main(int argc, char **argv)
                 continue;
             }
 
+            if (strcmp(a, "--color") == 0)
+            {
+                if (++i >= argc)
+                {
+                    fprintf(stderr, "uc: missing color argument\n");
+                    usage(stderr);
+                    free(inputs);
+                    return 2;
+                }
+
+                if (parse_color(argv[i], &color) < 0)
+                {
+                    fprintf(stderr,
+                            "uc: unknown color: %s "
+                            "(supported: auto, always, never)\n",
+                            argv[i]);
+                    free(inputs);
+                    return 2;
+                }
+
+                continue;
+            }
+
+            if (strncmp(a, "--color=", 8) == 0)
+            {
+                if (parse_color(a + 8, &color) < 0)
+                {
+                    fprintf(stderr,
+                            "uc: unknown color: %s "
+                            "(supported: auto, always, never)\n",
+                            a + 8);
+                    free(inputs);
+                    return 2;
+                }
+
+                continue;
+            }
+
             fprintf(stderr, "uc: unknown option: %s\n", a);
             usage(stderr);
             free(inputs);
@@ -300,7 +372,22 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    opts.use_color = isatty(fileno(stdout)) && getenv("NO_COLOR") == NULL;
+    switch (color)
+    {
+    case COLOR_ALWAYS:
+        opts.use_color = 1;
+        break;
+
+    case COLOR_NEVER:
+        opts.use_color = 0;
+        break;
+
+    case COLOR_AUTO:
+    default:
+        opts.use_color = isatty(fileno(stdout)) &&
+                         getenv("NO_COLOR") == NULL;
+        break;
+    }
 
     ctx = uc_new(&opts);
     if (!ctx)
