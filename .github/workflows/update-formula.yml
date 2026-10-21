@@ -17,10 +17,26 @@ jobs:
   update-formula:
     name: Update the formula
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       TAG: ${{ inputs.tag || github.event.release.tag_name }}
     steps:
+      - name: Set up Homebrew
+        id: brew
+        uses: Homebrew/actions/setup-homebrew@1f8e202ffddf94def7f42f6fa3a482e821489f9c # 2026.07.10.1
+
+      - name: Cache the Homebrew gems
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.brew.outputs.gems-path }}
+          key: ${{ runner.os }}-rubygems-${{ steps.brew.outputs.gems-hash }}
+          restore-keys: ${{ runner.os }}-rubygems-
+
+      - name: Install the Homebrew gems
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: brew install-bundler-gems
+
       - name: Checkout the tap
         uses: actions/checkout@v4
         with:
