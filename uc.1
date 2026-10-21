@@ -1,0 +1,99 @@
+.TH UC 1
+.SH NAME
+uc \- show or clean Unicode artifacts in text
+.SH SYNOPSIS
+.B uc
+.RI [ options ]
+.RI [ text ...]
+.SH DESCRIPTION
+.B uc
+reads UTF-8 text and reports characters that are invisible, are format
+characters, or fall outside the target encoding.
+In the default mode such characters are highlighted.
+.B \-s
+replaces them with their code point.
+.B \-c
+cleans the text.
+.PP
+Input and output are UTF-8.
+.B \-e
+selects the allowed character set only, the output encoding stays UTF-8.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print usage and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version and exit.
+.TP
+.BR \-s ", " \-\-show
+Show problematic characters as [U+XXXX].
+.TP
+.BR \-c ", " \-\-clear
+Clean the output text.
+.TP
+.BR \-e ", " \-\-encoding " " \fIenc\fR
+Target encoding: ascii, cp1252 or cp1251.
+.B \-\-encoding=\fIenc\fR
+works too.
+.TP
+.B \-\-check
+Exit with status 1 when problems were found.
+.TP
+.B \-\-color=\fIwhen\fR
+Colorize the output: auto, always or never.
+auto is the default and colorizes only a terminal.
+.SH CLEAR POLICY
+.B \-c
+keeps newline, carriage return, tab and ASCII printable characters.
+Controls and invisible or format characters are deleted.
+Unicode spaces become an ASCII space.
+Typography is normalized to ASCII.
+Characters outside the target encoding are folded to ASCII when a safe
+approximation exists, otherwise they become a question mark.
+.SH INPUT
+Text arguments are processed as input strings, one line per argument.
+An argument of
+.B \-
+reads standard input at that position.
+.B \-\-
+ends option parsing.
+Without text arguments
+.B uc
+reads standard input, or prints the usage when standard input is a
+terminal.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Problems were found and
+.B \-\-check
+was given.
+.TP
+.B 2
+Usage or I/O error.
+.SH EXAMPLES
+.PP
+Highlight the invisible characters of a file:
+.PP
+.RS
+uc < input.txt
+.RE
+.PP
+Clean a file down to ASCII:
+.PP
+.RS
+uc \-c \-e ascii < input.txt > output.txt
+.RE
+.PP
+Fail on any character outside cp1251:
+.PP
+.RS
+uc \-\-check \-e cp1251 < input.txt
+.RE
+.SH SEE ALSO
+.BR iconv (1)
+.SH AUTHOR
+Anastasia Shebalkina

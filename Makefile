@@ -4,6 +4,10 @@ TEST_NAME = uc_test
 CC = cc
 CFLAGS = -std=c99 -Wall -Wextra -O2 -I.
 
+PREFIX = /usr/local
+BINDIR = $(PREFIX)/bin
+MANDIR = $(PREFIX)/share/man/man1
+
 OBJS = uc.o main.o
 
 all: $(NAME)
@@ -23,7 +27,15 @@ $(TEST_NAME): test.c uc.c uc.h
 test: $(TEST_NAME)
 	./$(TEST_NAME)
 
+install: $(NAME) uc.1
+	mkdir -p $(DESTDIR)$(BINDIR) $(DESTDIR)$(MANDIR)
+	cp $(NAME) $(DESTDIR)$(BINDIR)/$(NAME)
+	cp uc.1 $(DESTDIR)$(MANDIR)/$(NAME).1
+
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/$(NAME) $(DESTDIR)$(MANDIR)/$(NAME).1
+
 clean:
 	rm -f $(NAME) $(TEST_NAME) $(OBJS)
 
-.PHONY: all clean test
+.PHONY: all clean test install uninstall
