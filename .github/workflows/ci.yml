@@ -54,8 +54,8 @@ jobs:
           brew tap jarpex/formulae https://github.com/jarpex/homebrew-formulae.git
           brew tap-info
 
-      - name: Install from the formula
-        run: brew install --HEAD jarpex/formulae/uc
+      - name: Install the released version
+        run: brew install jarpex/formulae/uc
 
       - name: Check the installed binary
         run: |

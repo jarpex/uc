@@ -7,6 +7,13 @@ Output: `UTF-8`.
 ## Install via Homebrew
 
 ```bash
+brew install jarpex/formulae/uc
+```
+
+The formula installs the latest release.
+To install the current `main` instead:
+
+```bash
 brew install --HEAD jarpex/formulae/uc
 ```
 
