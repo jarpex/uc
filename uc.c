@@ -197,6 +197,35 @@ static int emit_show_cp(const struct uc_ctx *c, uc_write_fn out, void *arg,
  * Classification.
  */
 
+struct uc_range
+{
+    uint32_t lo;
+    uint32_t hi;
+};
+
+/*
+ * Binary search over a sorted, non-overlapping range table.
+ */
+static int in_ranges(uint32_t cp, const struct uc_range *ranges, size_t n)
+{
+    size_t lo = 0;
+    size_t hi = n;
+
+    while (lo < hi)
+    {
+        size_t mid = lo + (hi - lo) / 2;
+
+        if (cp < ranges[mid].lo)
+            hi = mid;
+        else if (cp > ranges[mid].hi)
+            lo = mid + 1;
+        else
+            return 1;
+    }
+
+    return 0;
+}
+
 static int is_preserved(uint32_t cp)
 {
     return cp == 0x0A || cp == 0x0D || cp == 0x09;
@@ -221,94 +250,56 @@ static int is_control(uint32_t cp)
     return 0;
 }
 
+/*
+ * Unicode space separators, excluding the ASCII space.
+ */
+static const struct uc_range space_ranges[] = {
+    { 0x00A0, 0x00A0 }, { 0x1680, 0x1680 }, { 0x2000, 0x200A },
+    { 0x202F, 0x202F }, { 0x205F, 0x205F }, { 0x3000, 0x3000 },
+};
+
 static int is_unicode_space(uint32_t cp)
 {
-    if (cp == 0x00A0)
-        return 1;
-
-    if (cp == 0x1680)
-        return 1;
-
-    if (cp >= 0x2000 && cp <= 0x200A)
-        return 1;
-
-    if (cp == 0x202F || cp == 0x205F || cp == 0x3000)
-        return 1;
-
-    return 0;
+    return in_ranges(cp, space_ranges,
+                     sizeof(space_ranges) / sizeof(*space_ranges));
 }
+
+/*
+ * Every Unicode format character, plus the invisible marks that are not
+ * in the Cf category: the grapheme joiner, the variation selectors and
+ * the line and paragraph separators.
+ */
+static const struct uc_range format_ranges[] = {
+    { 0x00AD, 0x00AD }, { 0x034F, 0x034F }, { 0x0600, 0x0605 },
+    { 0x061C, 0x061C }, { 0x06DD, 0x06DD }, { 0x070F, 0x070F },
+    { 0x0890, 0x0891 }, { 0x08E2, 0x08E2 }, { 0x180E, 0x180E },
+    { 0x200B, 0x200F }, { 0x2028, 0x202E }, { 0x2060, 0x2064 },
+    { 0x2066, 0x206F }, { 0xFE00, 0xFE0F }, { 0xFEFF, 0xFEFF },
+    { 0xFFF9, 0xFFFB }, { 0x110BD, 0x110BD }, { 0x110CD, 0x110CD },
+    { 0x13430, 0x1343F }, { 0x1BCA0, 0x1BCA3 }, { 0x1D173, 0x1D17A },
+    { 0xE0001, 0xE0001 }, { 0xE0020, 0xE007F }, { 0xE0100, 0xE01EF },
+};
 
 static int is_zero_width_or_format(uint32_t cp)
 {
-    if (cp == 0x00AD)
-        return 1;
-
-    if (cp == 0x034F) /* COMBINING GRAPHEME JOINER */
-        return 1;
-
-    if (cp == 0x180E) /* MONGOLIAN VOWEL SEPARATOR */
-        return 1;
-
-    if (cp >= 0x200B && cp <= 0x200F)
-        return 1;
-
-    if (cp == 0x2028 || cp == 0x2029)
-        return 1;
-
-    if (cp >= 0x202A && cp <= 0x202E)
-        return 1;
-
-    if (cp >= 0x2060 && cp <= 0x2064)
-        return 1;
-
-    if (cp >= 0x2066 && cp <= 0x2069)
-        return 1;
-
-    if (cp >= 0x206A && cp <= 0x206F)
-        return 1;
-
-    if (cp == 0xFEFF)
-        return 1;
-
-    if (cp >= 0xFE00 && cp <= 0xFE0F)
-        return 1;
-
-    if (cp >= 0xFFF9 && cp <= 0xFFFB)
-        return 1;
-
-    if (cp == 0xE0001) /* LANGUAGE TAG */
-        return 1;
-
-    if (cp >= 0xE0020 && cp <= 0xE007F)
-        return 1;
-
-    if (cp >= 0xE0100 && cp <= 0xE01EF)
-        return 1;
-
-    return 0;
+    return in_ranges(cp, format_ranges,
+                     sizeof(format_ranges) / sizeof(*format_ranges));
 }
+
+/*
+ * Combining marks that a base letter can carry. A mark on its own is
+ * invisible and carries no meaning.
+ */
+static const struct uc_range combining_ranges[] = {
+    { 0x0300, 0x036F }, { 0x0483, 0x0489 }, { 0x1AB0, 0x1AFF },
+    { 0x1DC0, 0x1DFF }, { 0x20D0, 0x20FF }, { 0x302A, 0x302F },
+    { 0x3099, 0x309A }, { 0xA66F, 0xA672 }, { 0xFE20, 0xFE2F },
+};
 
 static int is_combining_mark(uint32_t cp)
 {
-    if (cp >= 0x0300 && cp <= 0x036F)
-        return 1;
-
-    if (cp >= 0x0483 && cp <= 0x0489)
-        return 1;
-
-    if (cp >= 0x1AB0 && cp <= 0x1AFF)
-        return 1;
-
-    if (cp >= 0x1DC0 && cp <= 0x1DFF)
-        return 1;
-
-    if (cp >= 0x20D0 && cp <= 0x20FF)
-        return 1;
-
-    if (cp >= 0xFE20 && cp <= 0xFE2F)
-        return 1;
-
-    return 0;
+    return in_ranges(cp, combining_ranges,
+                     sizeof(combining_ranges) / sizeof(*combining_ranges));
 }
 
 static int is_invisible(uint32_t cp)

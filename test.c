@@ -276,6 +276,42 @@ static void check_encoding(const char *name, enum uc_enc enc,
 }
 
 /*
+ * An invisible code point is deleted in clear mode. A visible code point
+ * outside the encoding is replaced instead, so the output tells the two
+ * apart.
+ */
+static void check_invisible_code_point(const char *name, uint32_t cp)
+{
+  char label[64];
+  unsigned char in[4];
+  size_t inlen;
+
+  snprintf(label, sizeof(label), "%s U+%04X", name, (unsigned)cp);
+
+  inlen = utf8_encode(cp, in);
+
+  check_case(label, UC_MODE_CLEAR, UC_ENC_ASCII, 0, (const char *)in, inlen,
+             "", 0, 1);
+}
+
+/*
+ * Every code point in a range must be invisible.
+ */
+static void check_invisible_ranges(const char *name,
+                                   const uint32_t *ranges, size_t nranges)
+{
+  size_t i;
+
+  for (i = 0; i < nranges; i += 2)
+  {
+    uint32_t cp;
+
+    for (cp = ranges[i]; cp <= ranges[i + 1]; cp++)
+      check_invisible_code_point(name, cp);
+  }
+}
+
+/*
  * The full windows-1252 and cp1251 code point sets.
  *
  * U+00A0 and U+00AD belong to both encodings but are invisible, so they
@@ -324,6 +360,32 @@ static const uint32_t cp1252_rejected[] = {
 static const uint32_t cp1251_rejected[] = {
   0x00C0, 0x00E9, 0x0100, 0x0152, 0x0153, 0x0160, 0x0178, 0x0192, 0x0391,
   0x03B1, 0x2010, 0x2012, 0x2015, 0x2032, 0x2126, 0x2500, 0x4E00, 0x1F600,
+};
+
+/*
+ * Format characters the range table must cover. Every one of them is
+ * invisible, so every one of them is a problem in any encoding.
+ *
+ * The table holds range endpoints: every code point from lo to hi must
+ * be reported.
+ */
+static const uint32_t format_ranges[] = {
+  0x00AD, 0x00AD, 0x034F, 0x034F, 0x0600, 0x0605, 0x061C, 0x061C,
+  0x06DD, 0x06DD, 0x070F, 0x070F, 0x0890, 0x0891, 0x08E2, 0x08E2,
+  0x110BD, 0x110BD, 0x110CD, 0x110CD, 0x13430, 0x1343F, 0x1BCA0,
+  0x1BCA3, 0x1D173, 0x1D17A, 0x180E, 0x180E, 0x200B, 0x200F,
+  0x2028, 0x202E, 0x2060, 0x2064, 0x2066, 0x206F, 0xFE00, 0xFE0F,
+  0xFEFF, 0xFEFF, 0xFFF9, 0xFFFB, 0xE0001, 0xE0001, 0xE0020, 0xE007F,
+  0xE0100, 0xE01EF,
+};
+
+/*
+ * Combining marks the range table must cover.
+ */
+static const uint32_t combining_ranges[] = {
+  0x0300, 0x036F, 0x0483, 0x0489, 0x1AB0, 0x1AFF, 0x1DC0, 0x1DFF,
+  0x20D0, 0x20FF, 0x302A, 0x302F, 0x3099, 0x309A, 0xA66F, 0xA672,
+  0xFE20, 0xFE2F,
 };
 
 int main(void)
@@ -1295,6 +1357,15 @@ int main(void)
   check_encoding("cp1251", UC_ENC_CP1251,
                  cp1251_allowed, sizeof(cp1251_allowed) / sizeof(*cp1251_allowed),
                  cp1251_rejected, sizeof(cp1251_rejected) / sizeof(*cp1251_rejected));
+
+  /*
+   * Invisible code points.
+   */
+  check_invisible_ranges("format", format_ranges,
+                          sizeof(format_ranges) / sizeof(*format_ranges));
+
+  check_invisible_ranges("combining", combining_ranges,
+                          sizeof(combining_ranges) / sizeof(*combining_ranges));
 
   fprintf(stderr, "%d tests run, %d failed\n", tests_run, tests_failed);
   return tests_failed ? 1 : 0;
