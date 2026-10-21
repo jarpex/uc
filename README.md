@@ -70,3 +70,6 @@ foo[U+00A0]bar
 ```sh
 make test
 ```
+
+`make test` runs the unit tests in `test.c` and the CLI tests in
+`test-cli.sh`.

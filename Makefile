@@ -24,8 +24,9 @@ main.o: main.c uc.h
 $(TEST_NAME): test.c uc.c uc.h
 	$(CC) $(CFLAGS) -o $@ test.c uc.c
 
-test: $(TEST_NAME)
+test: $(TEST_NAME) $(NAME)
 	./$(TEST_NAME)
+	sh test-cli.sh
 
 install: $(NAME) uc.1
 	mkdir -p $(DESTDIR)$(BINDIR) $(DESTDIR)$(MANDIR)
