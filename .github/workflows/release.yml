@@ -1,0 +1,172 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag to release, for example v1.0.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  BIN_NAME: uc
+
+jobs:
+  check-tag:
+    name: Check for Release Tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+
+      - name: Check the tag
+        id: check
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            echo "the tag $TAG is not vMAJOR.MINOR.PATCH" >&2
+            exit 1
+          fi
+          VERSION=${TAG#v}
+          if ! grep -qx "#define UC_VERSION \"$VERSION\"" uc.h; then
+            echo "uc.h does not define UC_VERSION $VERSION" >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  gate:
+    name: Build and Test
+    needs: check-tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check-tag.outputs.tag }}
+
+      - name: Build
+        run: make
+
+      - name: Test
+        run: make test
+
+      - name: Strict compile
+        run: cc -std=c99 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -O2 -I. -c uc.c -o /dev/null
+
+  build:
+    name: Build (${{ matrix.asset_name }})
+    needs: [check-tag, gate]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset_name: uc-linux-amd64
+          - os: ubuntu-24.04-arm
+            asset_name: uc-linux-arm64
+          - os: macos-26-intel
+            asset_name: uc-macos-intel
+          - os: macos-latest
+            asset_name: uc-macos-apple-silicon
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check-tag.outputs.tag }}
+
+      - name: Build
+        run: make
+
+      - name: Prepare the asset
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp uc uc.1 README.md LICENSE dist/
+          tar -czf ${{ matrix.asset_name }}.tar.gz -C dist .
+
+      - name: Upload the asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}.tar.gz
+          retention-days: 7
+
+  source:
+    name: Source tarball
+    needs: [check-tag, gate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.check-tag.outputs.tag }}
+
+      - name: Create the source tarball
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz --prefix=uc-${{ needs.check-tag.outputs.version }}/ \
+            -o uc-${{ needs.check-tag.outputs.version }}.tar.gz ${{ needs.check-tag.outputs.tag }}
+
+      - name: Upload the asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: uc-source
+          path: uc-*.tar.gz
+          retention-days: 7
+
+  publish:
+    name: Publish the Release
+    needs: [check-tag, build, source]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.check-tag.outputs.tag }}
+
+      - name: Download the assets
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: uc-*
+          merge-multiple: true
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Generate the release notes
+        run: |
+          git-cliff --latest --strip header -o RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+
+      - name: Create the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.check-tag.outputs.tag }}
+          files: artifacts/*.tar.gz
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
