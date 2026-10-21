@@ -40,7 +40,7 @@ static void print_mem(const char *label, const char *p, size_t n)
 }
 
 static int run_uc_full(enum uc_mode mode, enum uc_enc enc, int color,
-                       const char *in, size_t inlen,
+                       int fold, const char *in, size_t inlen,
                        char *out, size_t outcap, size_t *outlen,
                        unsigned long *issues)
 {
@@ -54,6 +54,7 @@ static int run_uc_full(enum uc_mode mode, enum uc_enc enc, int color,
   opts.mode = mode;
   opts.enc = enc;
   opts.use_color = color;
+  opts.fold_diacritics = fold;
 
   ctx = uc_new(&opts);
   if (!ctx)
@@ -94,6 +95,7 @@ static void check_case(const char *name,
                        enum uc_mode mode,
                        enum uc_enc enc,
                        int color,
+                       int fold,
                        const char *in,
                        size_t inlen,
                        const char *expected,
@@ -106,7 +108,7 @@ static void check_case(const char *name,
 
   tests_run++;
 
-  if (run_uc_full(mode, enc, color, in, inlen,
+  if (run_uc_full(mode, enc, color, fold, in, inlen,
                   out, sizeof(out), &outlen, &issues) != 0)
   {
     tests_failed++;
@@ -191,7 +193,11 @@ static void check_two_chunks(const char *name,
 }
 
 #define T(name, mode, enc, color, input, expected, issues)     \
-  check_case(name, mode, enc, color, input, sizeof(input) - 1, \
+  check_case(name, mode, enc, color, 0, input, sizeof(input) - 1, \
+             expected, sizeof(expected) - 1, issues)
+
+#define TF(name, mode, enc, color, input, expected, issues)    \
+  check_case(name, mode, enc, color, 1, input, sizeof(input) - 1, \
              expected, sizeof(expected) - 1, issues)
 
 #define T2(name, mode, enc, chunk1, chunk2, expected, issues)   \
@@ -258,7 +264,7 @@ static void check_code_point(const char *name, enum uc_enc enc,
     n = snprintf(expected, sizeof(expected), "[U+%04X]", (unsigned)cp);
   }
 
-  check_case(label, UC_MODE_SHOW, enc, 0, (const char *)in, inlen,
+  check_case(label, UC_MODE_SHOW, enc, 0, 0, (const char *)in, inlen,
              expected, (size_t)n, allowed ? 0 : 1);
 }
 
@@ -290,7 +296,7 @@ static void check_invisible_code_point(const char *name, uint32_t cp)
 
   inlen = utf8_encode(cp, in);
 
-  check_case(label, UC_MODE_CLEAR, UC_ENC_ASCII, 0, (const char *)in, inlen,
+  check_case(label, UC_MODE_CLEAR, UC_ENC_ASCII, 0, 0, (const char *)in, inlen,
              "", 0, 1);
 }
 
@@ -308,6 +314,88 @@ static void check_invisible_ranges(const char *name,
 
     for (cp = ranges[i]; cp <= ranges[i + 1]; cp++)
       check_invisible_code_point(name, cp);
+  }
+}
+
+/*
+ * ASCII base letters of Latin letters with diacritics, one per code point.
+ * A dot marks a code point with no diacritic base.
+ *
+ * The blocks are U+00C0..U+024F and U+1E00..U+1EFF.
+ */
+static const char diacritic_latin[] =
+  "AAAAAA.CEEEEIIII.NOOOOO..UUUUY..aaaaaa.ceeeeiiii.nooooo..uuuuy.y"
+  "AaAaAaCcCcCcCcDd..EeEeEeEeEeGgGgGgGgHh..IiIiIiIiI...JjKk.LlLlLl."
+  "...NnNnNn...OoOoOo..RrRrRrSsSsSsSsTtTt..UuUuUuUuUuUuWwYyYZzZzZz."
+  "................................Oo.............Uu..............."
+  ".............AaIiOoUuUuUuUuUu.AaAa....GgKkOoOo..j...Gg..NnAa...."
+  "AaAaEeEeIiIiOoOoRrRrUuUuSsTt..Hh......AaEeOoOoOoOoYy............"
+  "................";
+
+static const char diacritic_extended[] =
+  "AaBbBbBbCcDdDdDdDdDdEeEeEeEeEeFfGgHhHhHhHhHhIiIiKkKkKkLlLlLlLlMm"
+  "MmMmNnNnNnNnOoOoOoOoPpPpRrRrRrRrSsSsSsSsSsTtTtTtTtUuUuUuUuUuVvVv"
+  "WwWwWwWwWwXxXxYyZzZzZzhtwy......AaAaAaAaAaAaAaAaAaAaAaAaEeEeEeEe"
+  "EeEeEeEeIiIiOoOoOoOoOoOoOoOoOoOoOoOoUuUuUuUuUuUuUuYyYyYyYy......";
+
+/*
+ * With --fold-diacritics a letter with diacritics folds to its ASCII base
+ * even when the target encoding allows the character.
+ *
+ * A code point without a base letter keeps the output it has without the
+ * flag.
+ */
+static void check_diacritic_table(const char *name, const char *table,
+                                  uint32_t first, size_t len)
+{
+  size_t i;
+
+  for (i = 0; i < len; i++)
+  {
+    char label[64];
+    unsigned char in[4];
+    size_t inlen;
+
+    snprintf(label, sizeof(label), "%s U+%04X", name,
+             (unsigned)(first + (uint32_t)i));
+
+    inlen = utf8_encode(first + (uint32_t)i, in);
+
+    if (table[i] == '.')
+    {
+      char with_flag[16];
+      char without_flag[16];
+      size_t len_with = 0;
+      size_t len_without = 0;
+
+      tests_run++;
+
+      if (run_uc_full(UC_MODE_CLEAR, UC_ENC_CP1252, 0, 1,
+                      (const char *)in, inlen,
+                      with_flag, sizeof(with_flag), &len_with, NULL) != 0 ||
+          run_uc_full(UC_MODE_CLEAR, UC_ENC_CP1252, 0, 0,
+                      (const char *)in, inlen,
+                      without_flag, sizeof(without_flag), &len_without, NULL) != 0)
+      {
+        tests_failed++;
+        fprintf(stderr, "FAIL %s: run error\n", label);
+        continue;
+      }
+
+      if (len_with != len_without ||
+          memcmp(with_flag, without_flag, len_with) != 0)
+      {
+        tests_failed++;
+        fprintf(stderr, "FAIL %s: flag changed output\n", label);
+        print_mem("got", with_flag, len_with);
+        print_mem("expected", without_flag, len_without);
+      }
+
+      continue;
+    }
+
+    check_case(label, UC_MODE_CLEAR, UC_ENC_CP1252, 0, 1,
+               (const char *)in, inlen, &table[i], 1, 1);
   }
 }
 
@@ -1387,6 +1475,87 @@ int main(void)
   check_encoding("cp1251", UC_ENC_CP1251,
                  cp1251_allowed, sizeof(cp1251_allowed) / sizeof(*cp1251_allowed),
                  cp1251_rejected, sizeof(cp1251_rejected) / sizeof(*cp1251_rejected));
+
+  /*
+   * Diacritic folding.
+   */
+  TF("fold diacritics cafe",
+     UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+     "caf\xC3\xA9",
+     "cafe",
+     1);
+
+  T("fold diacritics cafe without flag keeps accent",
+     UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+     "caf\xC3\xA9",
+     "caf\xC3\xA9",
+     0);
+
+  TF("fold diacritics e acute",
+     UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+     "\xC3\xA9",
+     "e",
+     1);
+
+  TF("fold diacritics E acute",
+     UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+     "\xC3\x89",
+     "E",
+     1);
+
+  TF("fold diacritics u diaeresis",
+     UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+     "\xC3\xBC",
+     "u",
+     1);
+
+  TF("fold diacritics n tilde",
+     UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+     "\xC3\xB1",
+     "n",
+     1);
+
+  TF("fold diacritics a with macron",
+     UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+     "\xC4\x81",
+     "a",
+     1);
+
+  TF("fold diacritics O with horn",
+     UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+     "\xC6\xA0",
+     "O",
+     1);
+
+  TF("fold diacritics A with dot above and macron",
+     UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+     "\xC7\xA0",
+     "A",
+     1);
+
+  TF("fold diacritics shows problem in show mode",
+     UC_MODE_SHOW, UC_ENC_CP1252, 0,
+     "\xC3\xA9",
+     "[U+00E9]",
+     1);
+
+  TF("fold diacritics ascii encoding folds too",
+     UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+     "\xC3\xA9",
+     "e",
+     1);
+
+  TF("fold diacritics cp1251 folds too",
+     UC_MODE_CLEAR, UC_ENC_CP1251, 0,
+     "\xC3\xA9",
+     "e",
+     1);
+
+  check_diacritic_table("diacritic latin", diacritic_latin, 0x00C0,
+                        sizeof(diacritic_latin) - 1);
+
+  check_diacritic_table("diacritic extended", diacritic_extended, 0x1E00,
+                        sizeof(diacritic_extended) - 1);
 
   /*
    * Invisible code points.

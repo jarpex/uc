@@ -24,6 +24,7 @@ struct uc_opts
     enum uc_mode mode;
     enum uc_enc enc;
     int use_color;
+    int fold_diacritics;
 };
 
 /*

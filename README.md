@@ -39,7 +39,7 @@ make PREFIX=/usr install
 
 ```text
 usage: uc [-h] [-v] [-s] [-c] [-e encoding] [--check] [--color when]
-             [--] [text...]
+             [--fold-diacritics] [--] [text...]
 
 options:
   -h, --help       show help
@@ -49,6 +49,8 @@ options:
   -e, --encoding   target encoding: ascii, cp1252, cp1251
       --check      exit code 1 if problems were found
       --color when colorize output: auto, always, never
+      --fold-diacritics
+                   fold letters with diacritics to ASCII base
 
 -e selects allowed character set; output remains UTF-8.
 ```
@@ -65,6 +67,21 @@ Output:
 
 ```text
 foo[U+00A0]bar
+```
+
+## Example
+
+`cp1252` allows accented letters, so they pass through unchanged.
+`--fold-diacritics` folds them to their ASCII base instead:
+
+```sh
+printf 'caf\303\251\n' | uc -c -e cp1252 --fold-diacritics
+```
+
+Output:
+
+```text
+cafe
 ```
 
 ## Test

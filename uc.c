@@ -310,6 +310,68 @@ static int is_invisible(uint32_t cp)
 }
 
 /*
+ * ASCII base letters of Latin letters with diacritics, one per code point.
+ * A dot marks a code point with no diacritic base.
+ */
+static const char diacritic_latin[] =
+    /* U+00C0 */ "AAAAAA.CEEEEIIII.NOOOOO..UUUUY.."
+    /* U+00E0 */ "aaaaaa.ceeeeiiii.nooooo..uuuuy.y"
+    /* U+0100 */ "AaAaAaCcCcCcCcDd..EeEeEeEeEeGgGg"
+    /* U+0120 */ "GgGgHh..IiIiIiIiI...JjKk.LlLlLl."
+    /* U+0140 */ "...NnNnNn...OoOoOo..RrRrRrSsSsSs"
+    /* U+0160 */ "SsTtTt..UuUuUuUuUuUuWwYyYZzZzZz."
+    /* U+0180 */ "................................"
+    /* U+01A0 */ "Oo.............Uu..............."
+    /* U+01C0 */ ".............AaIiOoUuUuUuUuUu.Aa"
+    /* U+01E0 */ "Aa....GgKkOoOo..j...Gg..NnAa...."
+    /* U+0200 */ "AaAaEeEeIiIiOoOoRrRrUuUuSsTt..Hh"
+    /* U+0220 */ "......AaEeOoOoOoOoYy............"
+    /* U+0240 */ "................";
+
+/*
+ * The same for U+1E00..U+1EFF.
+ */
+static const char diacritic_extended[] =
+    /* U+1E00 */ "AaBbBbBbCcDdDdDdDdDdEeEeEeEeEeFf"
+    /* U+1E20 */ "GgHhHhHhHhHhIiIiKkKkKkLlLlLlLlMm"
+    /* U+1E40 */ "MmMmNnNnNnNnOoOoOoOoPpPpRrRrRrRr"
+    /* U+1E60 */ "SsSsSsSsSsTtTtTtTtUuUuUuUuUuVvVv"
+    /* U+1E80 */ "WwWwWwWwWwXxXxYyZzZzZzhtwy......"
+    /* U+1EA0 */ "AaAaAaAaAaAaAaAaAaAaAaAaEeEeEeEe"
+    /* U+1EC0 */ "EeEeEeEeIiIiOoOoOoOoOoOoOoOoOoOo"
+    /* U+1EE0 */ "OoOoUuUuUuUuUuUuUuYyYyYyYy......";
+
+/*
+ * The table must cover the whole block, so a mistyped row cannot shift
+ * the mapping.
+ */
+typedef char diacritic_latin_size[
+    sizeof(diacritic_latin) == 0x0250 - 0x00C0 + 1 ? 1 : -1];
+typedef char diacritic_extended_size[
+    sizeof(diacritic_extended) == 0x1F00 - 0x1E00 + 1 ? 1 : -1];
+
+/*
+ * Base ASCII letter of a Latin letter with diacritics.
+ * Returns 0 when the code point has no diacritic base.
+ */
+static char map_diacritic(uint32_t cp)
+{
+    const char *row;
+
+    if (cp >= 0x00C0 && cp < 0x00C0 + sizeof(diacritic_latin) - 1)
+        row = diacritic_latin + (cp - 0x00C0);
+    else if (cp >= 0x1E00 && cp < 0x1E00 + sizeof(diacritic_extended) - 1)
+        row = diacritic_extended + (cp - 0x1E00);
+    else
+        return 0;
+
+    if (*row == '.')
+        return 0;
+
+    return *row;
+}
+
+/*
  * Windows-1252 allowed Unicode code points.
  *
  * ASCII printable and preserved \n \r \t are handled separately.
@@ -470,6 +532,12 @@ static int is_allowed(struct uc_ctx *c, uint32_t cp)
 
     if (is_ascii_printable(cp))
         return 1;
+
+    /*
+     * The flag makes letters with diacritics unrepresentable in the target.
+     */
+    if (c->opts.fold_diacritics && map_diacritic(cp))
+        return 0;
 
     switch (c->opts.enc)
     {
@@ -855,6 +923,14 @@ static int handle_cp(struct uc_ctx *c, uint32_t cp, uc_write_fn out,
         char fw;
         if (fullwidth_to_ascii(cp, &fw))
             return emit(out, arg, &fw, 1);
+
+        if (c->opts.fold_diacritics)
+        {
+            char base = map_diacritic(cp);
+
+            if (base)
+                return emit(out, arg, &base, 1);
+        }
 
         const char *folded = map_fold(cp);
         if (folded)

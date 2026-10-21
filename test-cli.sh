@@ -135,6 +135,25 @@ check_status "unknown color" 2 "$UC" --color=bogus "text"
 
 check_status "missing color argument" 2 "$UC" --color
 
+# Diacritic folding.
+check "fold diacritics cafe" 0 "cafe" \
+  "$UC" -c -e cp1252 --fold-diacritics "$(printf 'caf\303\251')"
+
+check "fold diacritics keeps accent without the flag" 0 "$(printf 'caf\303\251')" \
+  "$UC" -c -e cp1252 "$(printf 'caf\303\251')"
+
+check "fold diacritics shows the problem" 0 "[U+00E9]" \
+  "$UC" -s -e cp1252 --fold-diacritics "$(printf '\303\251')"
+
+check "fold diacritics ascii encoding" 0 "cafe" \
+  "$UC" -c -e ascii --fold-diacritics "$(printf 'caf\303\251')"
+
+check_status "fold diacritics check finds problems" 1 \
+  "$UC" --check -e cp1252 --fold-diacritics "$(printf 'caf\303\251')"
+
+check_status "fold diacritics check passes without the flag" 0 \
+  "$UC" --check -e cp1252 "$(printf 'caf\303\251')"
+
 # No input on a terminal prints the usage.
 if command -v script >/dev/null 2>&1; then
     case $(uname -s) in

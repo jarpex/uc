@@ -18,7 +18,7 @@ static void usage(FILE *out)
 {
     fprintf(out,
             "usage: uc [-h] [-v] [-s] [-c] [-e encoding] [--check] [--color when]\n"
-            "             [--] [text...]\n"
+            "             [--fold-diacritics] [--] [text...]\n"
             "\n"
             "options:\n"
             "  -h, --help       show help\n"
@@ -28,6 +28,8 @@ static void usage(FILE *out)
             "  -e, --encoding   target encoding: ascii, cp1252, cp1251\n"
             "      --check      exit code 1 if problems were found\n"
             "      --color when colorize output: auto, always, never\n"
+            "      --fold-diacritics\n"
+            "                   fold letters with diacritics to ASCII base\n"
             "\n"
             "modes:\n"
             "  default          highlight problematic characters\n"
@@ -46,6 +48,7 @@ static void usage(FILE *out)
             "  normalize typography to ASCII\n"
             "  fold characters outside target encoding where possible\n"
             "  replace other unmapped bad characters with '?'\n"
+            "  --fold-diacritics also folds letters with diacritics\n"
             "\n"
             "encodings:\n"
             "  ascii\n"
@@ -307,6 +310,12 @@ int main(int argc, char **argv)
             if (strcmp(a, "--check") == 0)
             {
                 check = 1;
+                continue;
+            }
+
+            if (strcmp(a, "--fold-diacritics") == 0)
+            {
+                opts.fold_diacritics = 1;
                 continue;
             }
 

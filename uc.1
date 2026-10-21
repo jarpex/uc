@@ -46,6 +46,11 @@ auto is the default and colorizes only a terminal.
 always and never ignore the terminal and the
 .B NO_COLOR
 environment variable.
+.TP
+.B \-\-fold\-diacritics
+Fold letters with diacritics to their ASCII base letter.
+Such letters count as problems even when the target encoding allows
+them.
 .SH CLEAR POLICY
 .B \-c
 keeps newline, carriage return, tab and ASCII printable characters.
@@ -95,6 +100,12 @@ Fail on any character outside cp1251:
 .PP
 .RS
 uc \-\-check \-e cp1251 < input.txt
+.RE
+.PP
+Fold accented letters to ASCII under cp1252:
+.PP
+.RS
+uc \-c \-e cp1252 \-\-fold\-diacritics < input.txt
 .RE
 .SH SEE ALSO
 .BR iconv (1)
