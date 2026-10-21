@@ -22,6 +22,19 @@ or:
 cc -std=c99 -Wall -Wextra -O2 -o uc uc.c main.c
 ```
 
+## Install
+
+```sh
+make install
+```
+
+The man page goes to `$(PREFIX)/share/man/man1`.
+Set `PREFIX` to change the destination:
+
+```sh
+make PREFIX=/usr install
+```
+
 ## Usage
 
 ```text
@@ -43,13 +56,13 @@ options:
 The input contains invisible `U+00A0` characters:
 
 ```sh
-uc -s "The Static Linking Illusion: How glibc NSS Shatters Isolation in OT/ICS (and Where Security by Subtraction Fits In)"
+printf 'foo\302\240bar\n' | uc -s
 ```
 
 Output:
 
 ```text
-The Static Linking Illusion: How glibc NSS Shatters Isolation in[U+00A0]OT/ICS (and Where Security[U+00A0]by[U+00A0]Subtraction Fits[U+00A0]In)
+foo[U+00A0]bar
 ```
 
 ## Test
