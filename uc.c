@@ -582,6 +582,15 @@ static const char *map_fold(uint32_t cp)
         return ",";
 
     /* Simple symbol approximations */
+    case 0x00A9: /* COPYRIGHT SIGN */
+        return "(C)";
+
+    case 0x00AE: /* REGISTERED SIGN */
+        return "(R)";
+
+    case 0x00B0: /* DEGREE SIGN */
+        return "deg";
+
     case 0x00B1: /* PLUS-MINUS SIGN */
         return "+-";
 
@@ -602,6 +611,12 @@ static const char *map_fold(uint32_t cp)
 
     case 0x2030: /* PER MILLE SIGN */
         return "0/00";
+
+    case 0x20AC: /* EURO SIGN */
+        return "EUR";
+
+    case 0x2116: /* NUMERO SIGN */
+        return "No.";
 
     case 0x2122: /* TRADE MARK SIGN */
         return "TM";

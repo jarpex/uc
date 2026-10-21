@@ -994,6 +994,36 @@ int main(void)
     "*",
     1);
 
+  T("clear copyright to (C)",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "\xC2\xA9",
+    "(C)",
+    1);
+
+  T("clear registered sign to (R)",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "\xC2\xAE",
+    "(R)",
+    1);
+
+  T("clear degree sign to deg",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "\xC2\xB0",
+    "deg",
+    1);
+
+  T("clear euro sign to EUR",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "\xE2\x82\xAC",
+    "EUR",
+    1);
+
+  T("clear numero sign to No.",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "\xE2\x84\x96",
+    "No.",
+    1);
+
   T("clear per mille to 0/00",
     UC_MODE_CLEAR, UC_ENC_ASCII, 0,
     "\xE2\x80\xB0",
