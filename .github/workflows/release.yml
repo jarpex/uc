@@ -170,3 +170,11 @@ jobs:
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  formula:
+    name: Update the Homebrew Formula
+    needs: [check-tag, publish]
+    uses: ./.github/workflows/update-formula.yml
+    with:
+      tag: ${{ needs.check-tag.outputs.tag }}
+    secrets: inherit

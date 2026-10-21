@@ -3,6 +3,12 @@ name: Update the Homebrew Formula
 on:
   release:
     types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag to update the formula for
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,6 +18,8 @@ jobs:
     name: Update the formula
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
     steps:
       - name: Checkout the tap
         uses: actions/checkout@v4
@@ -23,11 +31,13 @@ jobs:
 
       - name: Checkout the sources
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+          path: sources
 
       - name: Download the release asset
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
           VERSION=${TAG#v}
@@ -46,15 +56,13 @@ jobs:
           sha256sum "$NAME"
 
       - name: Update the formula
-        env:
-          TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
           VERSION=${TAG#v}
           NAME="uc-$VERSION.tar.gz"
           SHA256=$(sha256sum "$NAME" | cut -d' ' -f1)
           URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$NAME"
-          python3 scripts/update-formula.py \
+          python3 sources/scripts/update-formula.py \
             tap/Formula/uc.rb "$URL" "$VERSION" "$SHA256"
 
       - name: Check the formula
@@ -62,8 +70,6 @@ jobs:
         run: brew style Formula/uc.rb
 
       - name: Commit and push
-        env:
-          TAG: ${{ github.event.release.tag_name }}
         working-directory: tap
         run: |
           set -euo pipefail
