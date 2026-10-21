@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#define UC_VERSION "0.1"
+
 enum uc_mode
 {
     UC_MODE_HIGHLIGHT,

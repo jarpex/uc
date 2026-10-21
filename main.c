@@ -199,7 +199,7 @@ int main(int argc, char **argv)
 
             if (strcmp(a, "-v") == 0 || strcmp(a, "--version") == 0)
             {
-                printf("uc 0.1\n");
+                printf("uc " UC_VERSION "\n");
                 free(inputs);
                 return 0;
             }
