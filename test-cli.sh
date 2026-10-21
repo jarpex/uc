@@ -154,6 +154,22 @@ check_status "fold diacritics check finds problems" 1 \
 check_status "fold diacritics check passes without the flag" 0 \
   "$UC" --check -e cp1252 "$(printf 'caf\303\251')"
 
+# Mixed script words.
+check "clear repairs a confusable in a Latin word" 0 "hello" \
+  "$UC" -c "$(printf 'hell\320\276')"
+
+check "show prints a confusable in a Latin word" 0 "hell[U+043E]" \
+  "$UC" -s "$(printf 'hell\320\276')"
+
+check "clear keeps a pure non-Latin word" 0 "$(printf '\321\200\321\203\321\201')" \
+  "$UC" -c -e cp1251 "$(printf '\321\200\321\203\321\201')"
+
+check "clear repairs a confusable in a cp1251 Latin word" 0 "hello" \
+  "$UC" -c -e cp1251 "$(printf 'hell\320\276')"
+
+check_status "check finds a confusable in a Latin word" 1 \
+  "$UC" --check "$(printf 'hell\320\276')"
+
 # No input on a terminal prints the usage.
 if command -v script >/dev/null 2>&1; then
     case $(uname -s) in

@@ -48,6 +48,7 @@ static void usage(FILE *out)
             "  normalize typography to ASCII\n"
             "  fold characters outside target encoding where possible\n"
             "  replace other unmapped bad characters with '?'\n"
+            "  repair letters that mix scripts inside a word\n"
             "  --fold-diacritics also folds letters with diacritics\n"
             "\n"
             "encodings:\n"

@@ -476,6 +476,80 @@ static const uint32_t combining_ranges[] = {
   0xFE20, 0xFE2F,
 };
 
+/*
+ * Confusable characters and the ASCII letter they mimic.
+ *
+ * The pairs are the ones the Unicode confusables data maps directly, so
+ * the test table and the table in uc.c must agree.
+ */
+struct uc_confusable
+{
+  uint32_t cp;
+  char ascii;
+};
+
+static const struct uc_confusable confusables[] = {
+  { 0x037F, 'J' }, { 0x0391, 'A' }, { 0x0392, 'B' }, { 0x0395, 'E' },
+  { 0x0396, 'Z' }, { 0x0397, 'H' }, { 0x0399, 'l' }, { 0x039A, 'K' },
+  { 0x039C, 'M' }, { 0x039D, 'N' }, { 0x039F, 'O' }, { 0x03A1, 'P' },
+  { 0x03A4, 'T' }, { 0x03A5, 'Y' }, { 0x03A7, 'X' }, { 0x03B1, 'a' },
+  { 0x03B3, 'y' }, { 0x03B9, 'i' }, { 0x03BD, 'v' }, { 0x03BF, 'o' },
+  { 0x03C1, 'p' }, { 0x03C3, 'o' }, { 0x03C5, 'u' }, { 0x03D2, 'Y' },
+  { 0x03DC, 'F' }, { 0x03ED, 'o' }, { 0x03F1, 'p' }, { 0x03F2, 'c' },
+  { 0x03F3, 'j' }, { 0x03F8, 'p' }, { 0x03F9, 'C' }, { 0x03FA, 'M' },
+  { 0x0405, 'S' }, { 0x0406, 'l' }, { 0x0408, 'J' }, { 0x0410, 'A' },
+  { 0x0412, 'B' }, { 0x0415, 'E' }, { 0x041A, 'K' }, { 0x041C, 'M' },
+  { 0x041D, 'H' }, { 0x041E, 'O' }, { 0x0420, 'P' }, { 0x0421, 'C' },
+  { 0x0422, 'T' }, { 0x0423, 'Y' }, { 0x0425, 'X' }, { 0x042C, 'b' },
+  { 0x0430, 'a' }, { 0x0433, 'r' }, { 0x0435, 'e' }, { 0x043E, 'o' },
+  { 0x0440, 'p' }, { 0x0441, 'c' }, { 0x0443, 'y' }, { 0x0445, 'x' },
+  { 0x0448, 'w' }, { 0x0455, 's' }, { 0x0456, 'i' }, { 0x0458, 'j' },
+  { 0x0461, 'w' }, { 0x0474, 'V' }, { 0x0475, 'v' }, { 0x04AE, 'Y' },
+  { 0x04AF, 'y' }, { 0x04BA, 'h' }, { 0x04BB, 'h' }, { 0x04BD, 'e' },
+  { 0x04C0, 'l' }, { 0x04CF, 'l' }, { 0x0501, 'd' }, { 0x050C, 'G' },
+  { 0x051A, 'Q' }, { 0x051B, 'q' }, { 0x051C, 'W' }, { 0x051D, 'w' },
+  { 0x054D, 'U' }, { 0x054F, 'S' }, { 0x0555, 'O' }, { 0x0561, 'w' },
+  { 0x0563, 'q' }, { 0x0566, 'q' }, { 0x0570, 'h' }, { 0x0575, 'j' },
+  { 0x0578, 'n' }, { 0x057C, 'n' }, { 0x057D, 'u' }, { 0x0581, 'g' },
+  { 0x0582, 'i' }, { 0x0584, 'f' }, { 0x0585, 'o' }, { 0x10B9, 'h' },
+  { 0x10BD, 'S' }, { 0x10CD, 'Z' }, { 0x10E7, 'y' }, { 0x10FD, 'S' },
+  { 0x10FF, 'o' }, { 0x1C82, 'o' }, { 0x1C83, 'c' }, { 0x1CBD, 'S' },
+  { 0x1CBF, 'O' }, { 0x2D2D, 'z' }, { 0xA647, 'i' },
+};
+
+/*
+ * A confusable inside a Latin word must be shown and repaired.
+ */
+static void check_confusable(const char *name, uint32_t cp, char ascii)
+{
+  char label[64];
+  unsigned char in[8];
+  char expected[8];
+  size_t inlen;
+  int n;
+
+  snprintf(label, sizeof(label), "%s U+%04X", name, (unsigned)cp);
+
+  /* "a" + confusable + "z" */
+  in[0] = 'a';
+  inlen = 1 + utf8_encode(cp, in + 1);
+  in[inlen++] = 'z';
+
+  n = snprintf(expected, sizeof(expected), "a%cz", ascii);
+
+  check_case(label, UC_MODE_CLEAR, UC_ENC_ASCII, 0, 0, (const char *)in,
+             inlen, expected, (size_t)n, 1);
+}
+
+static void check_confusables(void)
+{
+  size_t i;
+
+  for (i = 0; i < sizeof(confusables) / sizeof(*confusables); i++)
+    check_confusable("confusable in clear", confusables[i].cp,
+                     confusables[i].ascii);
+}
+
 int main(void)
 {
   /*
@@ -1466,8 +1540,95 @@ int main(void)
     3);
 
   /*
+   * Mixed script words.
+   */
+  T("clear repairs a confusable in a Latin word",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "hell"
+    "\xD0\xBE",
+    "hello",
+    1);
+
+  T("show prints a confusable in a Latin word",
+    UC_MODE_SHOW, UC_ENC_ASCII, 0,
+    "hell"
+    "\xD0\xBE",
+    "hell[U+043E]",
+    1);
+
+  T("highlight a confusable in a Latin word",
+    UC_MODE_HIGHLIGHT, UC_ENC_ASCII, 1,
+    "hell"
+    "\xD0\xBE",
+    "hell"
+    "\x1b[0;31m"
+    "\xD0\xBE"
+    "\x1b[0m",
+    1);
+
+  T("clear keeps a pure non-Latin word",
+    UC_MODE_CLEAR, UC_ENC_CP1251, 0,
+    "\xD1\x80\xD1\x83\xD1\x81",
+    "\xD1\x80\xD1\x83\xD1\x81",
+    0);
+
+  T("clear keeps a pure non-Latin word in ascii",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "\xD1\x80\xD1\x83\xD1\x81",
+    "???",
+    3);
+
+  T("clear repairs a confusable in a cp1251 Latin word",
+    UC_MODE_CLEAR, UC_ENC_CP1251, 0,
+    "hell"
+    "\xD0\xBE",
+    "hello",
+    1);
+
+  T("clear repairs a confusable next to a Latin letter",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "a"
+    "\xD0\xBE"
+    "z",
+    "aoz",
+    1);
+
+  T("clear keeps a non-Latin word with one Latin letter",
+    UC_MODE_CLEAR, UC_ENC_CP1251, 0,
+    "\xD1\x82\xD0\xB5\xD1\x81"
+    "a",
+    "\xD1\x82\xD0\xB5\xD1\x81"
+    "a",
+    0);
+
+  T("a word without a confusable is left alone",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "hello",
+    "hello",
+    0);
+
+  T("a confusable outside a word is not repaired",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "\xD0\xBE",
+    "?",
+    1);
+
+  T2("a confusable split across chunks is still repaired",
+     UC_MODE_CLEAR, UC_ENC_ASCII,
+     "hell\xD0", "\xBE", "hello", 1);
+
+  T("a word too long to judge is not repaired",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    "\xD0\xBE",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?",
+    1);
+
+  /*
    * Full encoding tables.
    */
+  check_confusables();
+
   check_encoding("cp1252", UC_ENC_CP1252,
                  cp1252_allowed, sizeof(cp1252_allowed) / sizeof(*cp1252_allowed),
                  cp1252_rejected, sizeof(cp1252_rejected) / sizeof(*cp1252_rejected));

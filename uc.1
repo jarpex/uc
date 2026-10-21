@@ -51,6 +51,14 @@ environment variable.
 Fold letters with diacritics to their ASCII base letter.
 Such letters count as problems even when the target encoding allows
 them.
+.SH MIXED SCRIPT
+A word that mixes scripts is a homograph.  A confusable letter inside a
+mostly ASCII word is repaired with the ASCII letter it mimics, and counts
+as a problem.
+.PP
+.RS
+uc \-c < input.txt
+.RE
 .SH CLEAR POLICY
 .B \-c
 keeps newline, carriage return, tab and ASCII printable characters.
@@ -106,6 +114,12 @@ Fold accented letters to ASCII under cp1252:
 .PP
 .RS
 uc \-c \-e cp1252 \-\-fold\-diacritics < input.txt
+.RE
+.PP
+Repair a homograph, a Latin word with a Cyrillic letter in it:
+.PP
+.RS
+uc \-c < input.txt
 .RE
 .SH SEE ALSO
 .BR iconv (1)

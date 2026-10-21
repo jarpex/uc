@@ -15,6 +15,8 @@ enum
     UTF8_BAD_SEQ = -3
 };
 
+#define UC_WORD_MAX 64
+
 struct uc_ctx
 {
     struct uc_opts opts;
@@ -24,6 +26,13 @@ struct uc_ctx
     uint32_t cp;
     uint32_t lower;
     uint32_t upper;
+
+    /* Current word, buffered until the word ends */
+    uint32_t word[UC_WORD_MAX];
+    size_t word_len;
+    int word_ascii;
+    int word_other;
+    int word_long;
 
     unsigned long issues;
 };
@@ -307,6 +316,111 @@ static int is_invisible(uint32_t cp)
     return is_unicode_space(cp) ||
            is_zero_width_or_format(cp) ||
            is_combining_mark(cp);
+}
+
+/*
+ * Letters from other scripts that look like ASCII letters.
+ *
+ * Source: Unicode confusables, UTS #39.
+ */
+struct uc_homoglyph
+{
+    uint32_t cp;
+    char ascii;
+};
+
+static const struct uc_homoglyph homoglyphs[] = {
+    { 0x037F, 'J' }, { 0x0391, 'A' }, { 0x0392, 'B' }, { 0x0395, 'E' },
+    { 0x0396, 'Z' }, { 0x0397, 'H' }, { 0x0399, 'l' }, { 0x039A, 'K' },
+    { 0x039C, 'M' }, { 0x039D, 'N' }, { 0x039F, 'O' }, { 0x03A1, 'P' },
+    { 0x03A4, 'T' }, { 0x03A5, 'Y' }, { 0x03A7, 'X' }, { 0x03B1, 'a' },
+    { 0x03B3, 'y' }, { 0x03B9, 'i' }, { 0x03BD, 'v' }, { 0x03BF, 'o' },
+    { 0x03C1, 'p' }, { 0x03C3, 'o' }, { 0x03C5, 'u' }, { 0x03D2, 'Y' },
+    { 0x03DC, 'F' }, { 0x03ED, 'o' }, { 0x03F1, 'p' }, { 0x03F2, 'c' },
+    { 0x03F3, 'j' }, { 0x03F8, 'p' }, { 0x03F9, 'C' }, { 0x03FA, 'M' },
+    { 0x0405, 'S' }, { 0x0406, 'l' }, { 0x0408, 'J' }, { 0x0410, 'A' },
+    { 0x0412, 'B' }, { 0x0415, 'E' }, { 0x041A, 'K' }, { 0x041C, 'M' },
+    { 0x041D, 'H' }, { 0x041E, 'O' }, { 0x0420, 'P' }, { 0x0421, 'C' },
+    { 0x0422, 'T' }, { 0x0423, 'Y' }, { 0x0425, 'X' }, { 0x042C, 'b' },
+    { 0x0430, 'a' }, { 0x0433, 'r' }, { 0x0435, 'e' }, { 0x043E, 'o' },
+    { 0x0440, 'p' }, { 0x0441, 'c' }, { 0x0443, 'y' }, { 0x0445, 'x' },
+    { 0x0448, 'w' }, { 0x0455, 's' }, { 0x0456, 'i' }, { 0x0458, 'j' },
+    { 0x0461, 'w' }, { 0x0474, 'V' }, { 0x0475, 'v' }, { 0x04AE, 'Y' },
+    { 0x04AF, 'y' }, { 0x04BA, 'h' }, { 0x04BB, 'h' }, { 0x04BD, 'e' },
+    { 0x04C0, 'l' }, { 0x04CF, 'l' }, { 0x0501, 'd' }, { 0x050C, 'G' },
+    { 0x051A, 'Q' }, { 0x051B, 'q' }, { 0x051C, 'W' }, { 0x051D, 'w' },
+    { 0x054D, 'U' }, { 0x054F, 'S' }, { 0x0555, 'O' }, { 0x0561, 'w' },
+    { 0x0563, 'q' }, { 0x0566, 'q' }, { 0x0570, 'h' }, { 0x0575, 'j' },
+    { 0x0578, 'n' }, { 0x057C, 'n' }, { 0x057D, 'u' }, { 0x0581, 'g' },
+    { 0x0582, 'i' }, { 0x0584, 'f' }, { 0x0585, 'o' }, { 0x10B9, 'h' },
+    { 0x10BD, 'S' }, { 0x10CD, 'Z' }, { 0x10E7, 'y' }, { 0x10FD, 'S' },
+    { 0x10FF, 'o' }, { 0x1C82, 'o' }, { 0x1C83, 'c' }, { 0x1CBD, 'S' },
+    { 0x1CBF, 'O' }, { 0x2D2D, 'z' }, { 0xA647, 'i' },
+};
+
+/*
+ * The table must stay sorted by code point.
+ */
+static const struct uc_homoglyph *find_homoglyph(uint32_t cp)
+{
+    size_t lo = 0;
+    size_t hi = sizeof(homoglyphs) / sizeof(*homoglyphs);
+
+    while (lo < hi)
+    {
+        size_t mid = lo + (hi - lo) / 2;
+
+        if (cp < homoglyphs[mid].cp)
+            hi = mid;
+        else if (cp > homoglyphs[mid].cp)
+            lo = mid + 1;
+        else
+            return &homoglyphs[mid];
+    }
+
+    return NULL;
+}
+
+/*
+ * Letters, to split the text into words.
+ */
+static const struct uc_range letter_ranges[] = {
+    { 0x0041, 0x005A }, /* ASCII */
+    { 0x0061, 0x007A },
+    { 0x00AA, 0x00AA },
+    { 0x00B5, 0x00B5 },
+    { 0x00BA, 0x00BA },
+    { 0x00C0, 0x00D6 }, /* Latin-1 Supplement */
+    { 0x00D8, 0x00F6 },
+    { 0x00F8, 0x00FF },
+    { 0x0100, 0x024F }, /* Latin Extended-A and -B */
+    { 0x0370, 0x03FF }, /* Greek and Coptic */
+    { 0x0400, 0x052F }, /* Cyrillic */
+    { 0x0530, 0x058F }, /* Armenian */
+    { 0x10A0, 0x10FF }, /* Georgian */
+    { 0x1C80, 0x1C88 }, /* Cyrillic Extended-C */
+    { 0x1C90, 0x1CBF }, /* Georgian Extended */
+    { 0x1E00, 0x1EFF }, /* Latin Extended Additional */
+    { 0x1F00, 0x1FFF }, /* Greek Extended */
+    { 0x2C60, 0x2C7F }, /* Latin Extended-C */
+    { 0x2D00, 0x2D2F }, /* Georgian Extended */
+    { 0x2DE0, 0x2DFF }, /* Cyrillic Extended-A */
+    { 0xA640, 0xA69F }, /* Cyrillic Extended-B */
+    { 0xA720, 0xA7FF }, /* Latin Extended-D */
+    { 0xFB00, 0xFB06 }, /* Latin ligatures */
+    { 0xFF21, 0xFF3A }, /* Fullwidth Latin */
+    { 0xFF41, 0xFF5A },
+};
+
+static int is_letter(uint32_t cp)
+{
+    return in_ranges(cp, letter_ranges,
+                     sizeof(letter_ranges) / sizeof(*letter_ranges));
+}
+
+static int is_ascii_letter(uint32_t cp)
+{
+    return (cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z');
 }
 
 /*
@@ -970,6 +1084,91 @@ static int handle_cp(struct uc_ctx *c, uint32_t cp, uc_write_fn out,
 }
 
 /*
+ * A confusable in a Latin word is repaired with the letter it mimics.
+ */
+static int handle_confusable(struct uc_ctx *c, uint32_t cp, char ascii,
+                             uc_write_fn out, void *arg)
+{
+    c->issues++;
+
+    switch (c->opts.mode)
+    {
+    case UC_MODE_CLEAR:
+        return emit(out, arg, &ascii, 1);
+
+    case UC_MODE_SHOW:
+        return emit_show_cp(c, out, arg, cp);
+
+    case UC_MODE_HIGHLIGHT:
+    default:
+        if (!c->opts.use_color)
+            return emit_cp_plain(out, arg, cp);
+
+        return emit_cp_color(c, out, arg, cp);
+    }
+}
+
+/*
+ * A confusable letter inside a mostly ASCII word is a homograph.
+ */
+static int flush_word(struct uc_ctx *c, uc_write_fn out, void *arg, int end)
+{
+    int mixed = !c->word_long && c->word_ascii > c->word_other;
+    size_t i;
+
+    for (i = 0; i < c->word_len; i++)
+    {
+        uint32_t cp = c->word[i];
+        const struct uc_homoglyph *h = mixed ? find_homoglyph(cp) : NULL;
+
+        if (h)
+        {
+            if (handle_confusable(c, cp, h->ascii, out, arg) < 0)
+                return -1;
+
+            continue;
+        }
+
+        if (handle_cp(c, cp, out, arg) < 0)
+            return -1;
+    }
+
+    c->word_len = 0;
+    c->word_ascii = 0;
+    c->word_other = 0;
+
+    if (end)
+        c->word_long = 0;
+
+    return 0;
+}
+
+static int handle_letter(struct uc_ctx *c, uint32_t cp, uc_write_fn out,
+                          void *arg)
+{
+    if (c->word_len == UC_WORD_MAX)
+    {
+        /*
+         * A word this long is not judged: the rest of it would change the
+         * verdict, so nothing in it is repaired.
+         */
+        c->word_long = 1;
+
+        if (flush_word(c, out, arg, 0) < 0)
+            return -1;
+    }
+
+    c->word[c->word_len++] = cp;
+
+    if (is_ascii_letter(cp))
+        c->word_ascii++;
+    else
+        c->word_other++;
+
+    return 0;
+}
+
+/*
  * UTF-8 decoder.
  */
 
@@ -1076,6 +1275,9 @@ int uc_feed(struct uc_ctx *c, const void *buf, size_t len,
 
             if (r == UTF8_BAD_START)
             {
+                if (flush_word(c, out, arg, 1) < 0)
+                    return -1;
+
                 if (handle_invalid(c, out, arg) < 0)
                     return -1;
 
@@ -1084,6 +1286,17 @@ int uc_feed(struct uc_ctx *c, const void *buf, size_t len,
 
             if (r == UTF8_STARTED)
                 continue;
+
+            if (is_letter(cp))
+            {
+                if (handle_letter(c, cp, out, arg) < 0)
+                    return -1;
+
+                continue;
+            }
+
+            if (flush_word(c, out, arg, 1) < 0)
+                return -1;
 
             if (handle_cp(c, cp, out, arg) < 0)
                 return -1;
@@ -1099,6 +1312,9 @@ int uc_feed(struct uc_ctx *c, const void *buf, size_t len,
             {
                 c->need = 0;
 
+                if (flush_word(c, out, arg, 1) < 0)
+                    return -1;
+
                 if (handle_invalid(c, out, arg) < 0)
                     return -1;
 
@@ -1109,6 +1325,9 @@ int uc_feed(struct uc_ctx *c, const void *buf, size_t len,
             {
                 c->need = 0;
 
+                if (flush_word(c, out, arg, 1) < 0)
+                    return -1;
+
                 if (handle_invalid(c, out, arg) < 0)
                     return -1;
 
@@ -1117,6 +1336,17 @@ int uc_feed(struct uc_ctx *c, const void *buf, size_t len,
 
             if (r == UTF8_DONE)
             {
+                if (is_letter(cp))
+                {
+                    if (handle_letter(c, cp, out, arg) < 0)
+                        return -1;
+
+                    continue;
+                }
+
+                if (flush_word(c, out, arg, 1) < 0)
+                    return -1;
+
                 if (handle_cp(c, cp, out, arg) < 0)
                     return -1;
             }
@@ -1128,6 +1358,9 @@ int uc_feed(struct uc_ctx *c, const void *buf, size_t len,
 
 int uc_end(struct uc_ctx *c, uc_write_fn out, void *arg)
 {
+    if (flush_word(c, out, arg, 1) < 0)
+        return -1;
+
     if (c->need != 0)
     {
         c->need = 0;

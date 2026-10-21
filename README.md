@@ -84,6 +84,21 @@ Output:
 cafe
 ```
 
+## Example
+
+A word that mixes scripts is a homograph.  The Cyrillic `о` in `hello` is
+repaired with the ASCII letter it mimics:
+
+```sh
+printf 'hell\320\276\n' | uc -c
+```
+
+Output:
+
+```text
+hello
+```
+
 ## Test
 
 ```sh
