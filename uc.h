@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#define UC_VERSION "1.0.1"
+#define UC_VERSION "1.0.2"
 
 enum uc_mode
 {
