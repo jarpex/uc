@@ -108,6 +108,42 @@ jobs:
           path: ${{ matrix.asset_name }}.tar.gz
           retention-days: 7
 
+  build-windows:
+    name: Build (uc-windows-x86_64)
+    needs: [check-tag, gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check-tag.outputs.tag }}
+
+      - name: Install cosmocc
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.cosmo"
+          curl -sSLf https://github.com/jart/cosmopolitan/releases/download/4.0.2/cosmocc-4.0.2.zip -o /tmp/cosmocc.zip
+          unzip -q /tmp/cosmocc.zip -d "$HOME/.cosmo"
+          echo "$HOME/.cosmo/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        run: make cosmo
+
+      - name: Prepare the asset
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp uc.exe README.md LICENSE dist/
+          cd dist && zip -9 -r ../uc-windows-x86_64.zip .
+
+      - name: Upload the asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: uc-windows-x86_64
+          path: uc-windows-x86_64.zip
+          retention-days: 7
+
   source:
     name: Source tarball
     needs: [check-tag, gate]
@@ -134,7 +170,7 @@ jobs:
 
   publish:
     name: Publish the Release
-    needs: [check-tag, build, source]
+    needs: [check-tag, build, build-windows, source]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -164,7 +200,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.check-tag.outputs.tag }}
-          files: artifacts/*.tar.gz
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
           body_path: RELEASE_NOTES.md
           generate_release_notes: false
           make_latest: true

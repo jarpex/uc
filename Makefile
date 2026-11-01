@@ -2,6 +2,7 @@ NAME = uc
 TEST_NAME = uc_test
 
 CC = cc
+COSMOCC ?= cosmocc
 CFLAGS = -std=c99 -Wall -Wextra -O2 -I.
 
 PREFIX = /usr/local
@@ -14,6 +15,11 @@ all: $(NAME)
 
 $(NAME): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS)
+
+cosmo: $(NAME).exe
+
+$(NAME).exe: uc.c main.c uc.h
+	$(COSMOCC) $(CFLAGS) -o $@ uc.c main.c
 
 uc.o: uc.c uc.h
 	$(CC) $(CFLAGS) -c uc.c
@@ -37,6 +43,6 @@ uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/$(NAME) $(DESTDIR)$(MANDIR)/$(NAME).1
 
 clean:
-	rm -f $(NAME) $(TEST_NAME) $(OBJS)
+	rm -f $(NAME) $(NAME).exe $(TEST_NAME) $(OBJS) *.aarch64.elf *.com.dbg
 
-.PHONY: all clean test install uninstall
+.PHONY: all clean test install uninstall cosmo
