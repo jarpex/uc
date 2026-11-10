@@ -15,15 +15,11 @@ enum
     UTF8_BAD_SEQ = -3
 };
 
-enum uc_script
+enum
 {
-    UC_SCRIPT_UNKNOWN = 0,
-    UC_SCRIPT_LATIN,
-    UC_SCRIPT_CYRILLIC,
-    UC_SCRIPT_GREEK,
-    UC_SCRIPT_ARMENIAN,
-    UC_SCRIPT_GEORGIAN,
-    UC_SCRIPT_COUNT
+    SCRIPT_NONE = 0,
+    SCRIPT_LATIN,
+    SCRIPT_CYRILLIC
 };
 
 #define UC_WORD_MAX 64
@@ -41,7 +37,9 @@ struct uc_ctx
     /* Current word, buffered until the word ends */
     uint32_t word[UC_WORD_MAX];
     size_t word_len;
-    int script_counts[UC_SCRIPT_COUNT];
+    int word_latin;
+    int word_cyrillic;
+    int word_other;
     int word_long;
 
     unsigned long issues;
@@ -389,12 +387,12 @@ static uint32_t find_homoglyph(uint32_t cp, int target_script)
 
     switch (target_script)
     {
-    case UC_SCRIPT_LATIN:
+    case SCRIPT_LATIN:
         table = homoglyphs_to_latin;
         hi = sizeof(homoglyphs_to_latin) / sizeof(*homoglyphs_to_latin);
         break;
 
-    case UC_SCRIPT_CYRILLIC:
+    case SCRIPT_CYRILLIC:
         table = homoglyphs_to_cyrillic;
         hi = sizeof(homoglyphs_to_cyrillic) / sizeof(*homoglyphs_to_cyrillic);
         break;
@@ -455,46 +453,19 @@ static int is_letter(uint32_t cp)
                      sizeof(letter_ranges) / sizeof(*letter_ranges));
 }
 
-static int char_script(uint32_t cp)
+static int is_latin_letter(uint32_t cp)
 {
-    if ((cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z'))
-        return UC_SCRIPT_LATIN;
+    return (cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z') ||
+           (cp >= 0x00C0 && cp <= 0x024F && cp != 0x00D7 && cp != 0x00F7) ||
+           (cp >= 0x1E00 && cp <= 0x1EFF);
+}
 
-    if (cp >= 0x0400 && cp <= 0x052F)
-        return UC_SCRIPT_CYRILLIC;
-
-    if (cp >= 0x0370 && cp <= 0x03FF)
-        return UC_SCRIPT_GREEK;
-
-    if (cp >= 0x0530 && cp <= 0x058F)
-        return UC_SCRIPT_ARMENIAN;
-
-    if (cp >= 0x10A0 && cp <= 0x10FF)
-        return UC_SCRIPT_GEORGIAN;
-
-    if ((cp >= 0x00C0 && cp <= 0x024F && cp != 0x00D7 && cp != 0x00F7) ||
-        (cp >= 0x1E00 && cp <= 0x1EFF) ||
-        (cp >= 0x2C60 && cp <= 0x2C7F) ||
-        (cp >= 0xA720 && cp <= 0xA7FF) ||
-        (cp >= 0xFB00 && cp <= 0xFB06) ||
-        (cp >= 0xFF21 && cp <= 0xFF3A) ||
-        (cp >= 0xFF41 && cp <= 0xFF5A) ||
-        cp == 0x00AA || cp == 0x00BA)
-        return UC_SCRIPT_LATIN;
-
-    if ((cp >= 0x1C80 && cp <= 0x1C88) ||
-        (cp >= 0x2DE0 && cp <= 0x2DFF) ||
-        (cp >= 0xA640 && cp <= 0xA69F))
-        return UC_SCRIPT_CYRILLIC;
-
-    if ((cp >= 0x1F00 && cp <= 0x1FFF) || cp == 0x00B5)
-        return UC_SCRIPT_GREEK;
-
-    if ((cp >= 0x1C90 && cp <= 0x1CBF) ||
-        (cp >= 0x2D00 && cp <= 0x2D2F))
-        return UC_SCRIPT_GEORGIAN;
-
-    return UC_SCRIPT_UNKNOWN;
+static int is_cyrillic_letter(uint32_t cp)
+{
+    return (cp >= 0x0400 && cp <= 0x052F) ||
+           (cp >= 0x1C80 && cp <= 0x1C88) ||
+           (cp >= 0x2DE0 && cp <= 0x2DFF) ||
+           (cp >= 0xA640 && cp <= 0xA69F);
 }
 
 /*
@@ -1190,46 +1161,31 @@ static int handle_confusable(struct uc_ctx *c, uint32_t cp, uint32_t rep,
     }
 }
 
-static int dominant_script(const struct uc_ctx *c)
-{
-    int dominant = UC_SCRIPT_UNKNOWN;
-    int max = 0;
-    int total = 0;
-    int s;
-
-    if (c->word_long)
-        return UC_SCRIPT_UNKNOWN;
-
-    for (s = 1; s < UC_SCRIPT_COUNT; s++)
-    {
-        total += c->script_counts[s];
-        if (c->script_counts[s] > max)
-        {
-            max = c->script_counts[s];
-            dominant = s;
-        }
-    }
-
-    if (max > total - max)
-        return dominant;
-
-    return UC_SCRIPT_UNKNOWN;
-}
-
 /*
  * A confusable letter inside a word of a different script is a homograph.
  */
 static int flush_word(struct uc_ctx *c, uc_write_fn out, void *arg, int end)
 {
-    int target = dominant_script(c);
+    int target = SCRIPT_NONE;
     size_t i;
+
+    if (!c->word_long)
+    {
+        if (c->word_latin > c->word_cyrillic + c->word_other)
+            target = SCRIPT_LATIN;
+        else if (c->word_cyrillic > c->word_latin + c->word_other)
+            target = SCRIPT_CYRILLIC;
+    }
 
     for (i = 0; i < c->word_len; i++)
     {
         uint32_t cp = c->word[i];
-        uint32_t rep = (target != UC_SCRIPT_UNKNOWN && char_script(cp) != target)
-                           ? find_homoglyph(cp, target)
-                           : 0;
+        uint32_t rep = 0;
+
+        if (target == SCRIPT_LATIN && !is_latin_letter(cp))
+            rep = find_homoglyph(cp, SCRIPT_LATIN);
+        else if (target == SCRIPT_CYRILLIC && !is_cyrillic_letter(cp))
+            rep = find_homoglyph(cp, SCRIPT_CYRILLIC);
 
         if (rep)
         {
@@ -1244,7 +1200,9 @@ static int flush_word(struct uc_ctx *c, uc_write_fn out, void *arg, int end)
     }
 
     c->word_len = 0;
-    memset(c->script_counts, 0, sizeof(c->script_counts));
+    c->word_latin = 0;
+    c->word_cyrillic = 0;
+    c->word_other = 0;
 
     if (end)
         c->word_long = 0;
@@ -1268,7 +1226,13 @@ static int handle_letter(struct uc_ctx *c, uint32_t cp, uc_write_fn out,
     }
 
     c->word[c->word_len++] = cp;
-    c->script_counts[char_script(cp)]++;
+
+    if (is_latin_letter(cp))
+        c->word_latin++;
+    else if (is_cyrillic_letter(cp))
+        c->word_cyrillic++;
+    else
+        c->word_other++;
 
     return 0;
 }
