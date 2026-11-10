@@ -15,6 +15,17 @@ enum
     UTF8_BAD_SEQ = -3
 };
 
+enum uc_script
+{
+    UC_SCRIPT_UNKNOWN = 0,
+    UC_SCRIPT_LATIN,
+    UC_SCRIPT_CYRILLIC,
+    UC_SCRIPT_GREEK,
+    UC_SCRIPT_ARMENIAN,
+    UC_SCRIPT_GEORGIAN,
+    UC_SCRIPT_COUNT
+};
+
 #define UC_WORD_MAX 64
 
 struct uc_ctx
@@ -30,8 +41,7 @@ struct uc_ctx
     /* Current word, buffered until the word ends */
     uint32_t word[UC_WORD_MAX];
     size_t word_len;
-    int word_ascii;
-    int word_other;
+    int script_counts[UC_SCRIPT_COUNT];
     int word_long;
 
     unsigned long issues;
@@ -319,17 +329,17 @@ static int is_invisible(uint32_t cp)
 }
 
 /*
- * Letters from other scripts that look like ASCII letters.
+ * Confusable letters between scripts.
  *
  * Source: Unicode confusables, UTS #39.
  */
 struct uc_homoglyph
 {
-    uint32_t cp;
-    char ascii;
+    uint32_t from;
+    uint32_t to;
 };
 
-static const struct uc_homoglyph homoglyphs[] = {
+static const struct uc_homoglyph homoglyphs_to_latin[] = {
     { 0x037F, 'J' }, { 0x0391, 'A' }, { 0x0392, 'B' }, { 0x0395, 'E' },
     { 0x0396, 'Z' }, { 0x0397, 'H' }, { 0x0399, 'l' }, { 0x039A, 'K' },
     { 0x039C, 'M' }, { 0x039D, 'N' }, { 0x039F, 'O' }, { 0x03A1, 'P' },
@@ -358,27 +368,54 @@ static const struct uc_homoglyph homoglyphs[] = {
     { 0x1CBF, 'O' }, { 0x2D2D, 'z' }, { 0xA647, 'i' },
 };
 
+static const struct uc_homoglyph homoglyphs_to_cyrillic[] = {
+    { 'A', 0x0410 }, { 'B', 0x0412 }, { 'C', 0x0421 }, { 'E', 0x0415 },
+    { 'H', 0x041D }, { 'I', 0x0406 }, { 'J', 0x0408 }, { 'K', 0x041A },
+    { 'M', 0x041C }, { 'O', 0x041E }, { 'P', 0x0420 }, { 'S', 0x0405 },
+    { 'T', 0x0422 }, { 'X', 0x0425 }, { 'Y', 0x0423 }, { 'a', 0x0430 },
+    { 'c', 0x0441 }, { 'e', 0x0435 }, { 'i', 0x0456 }, { 'j', 0x0458 },
+    { 'o', 0x043E }, { 'p', 0x0440 }, { 's', 0x0455 }, { 'x', 0x0445 },
+    { 'y', 0x0443 },
+};
+
 /*
- * The table must stay sorted by code point.
+ * The tables must stay sorted by 'from' code point.
  */
-static const struct uc_homoglyph *find_homoglyph(uint32_t cp)
+static uint32_t find_homoglyph(uint32_t cp, int target_script)
 {
+    const struct uc_homoglyph *table;
     size_t lo = 0;
-    size_t hi = sizeof(homoglyphs) / sizeof(*homoglyphs);
+    size_t hi;
+
+    switch (target_script)
+    {
+    case UC_SCRIPT_LATIN:
+        table = homoglyphs_to_latin;
+        hi = sizeof(homoglyphs_to_latin) / sizeof(*homoglyphs_to_latin);
+        break;
+
+    case UC_SCRIPT_CYRILLIC:
+        table = homoglyphs_to_cyrillic;
+        hi = sizeof(homoglyphs_to_cyrillic) / sizeof(*homoglyphs_to_cyrillic);
+        break;
+
+    default:
+        return 0;
+    }
 
     while (lo < hi)
     {
         size_t mid = lo + (hi - lo) / 2;
 
-        if (cp < homoglyphs[mid].cp)
+        if (cp < table[mid].from)
             hi = mid;
-        else if (cp > homoglyphs[mid].cp)
+        else if (cp > table[mid].from)
             lo = mid + 1;
         else
-            return &homoglyphs[mid];
+            return table[mid].to;
     }
 
-    return NULL;
+    return 0;
 }
 
 /*
@@ -418,9 +455,46 @@ static int is_letter(uint32_t cp)
                      sizeof(letter_ranges) / sizeof(*letter_ranges));
 }
 
-static int is_ascii_letter(uint32_t cp)
+static int char_script(uint32_t cp)
 {
-    return (cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z');
+    if ((cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z'))
+        return UC_SCRIPT_LATIN;
+
+    if (cp >= 0x0400 && cp <= 0x052F)
+        return UC_SCRIPT_CYRILLIC;
+
+    if (cp >= 0x0370 && cp <= 0x03FF)
+        return UC_SCRIPT_GREEK;
+
+    if (cp >= 0x0530 && cp <= 0x058F)
+        return UC_SCRIPT_ARMENIAN;
+
+    if (cp >= 0x10A0 && cp <= 0x10FF)
+        return UC_SCRIPT_GEORGIAN;
+
+    if ((cp >= 0x00C0 && cp <= 0x024F && cp != 0x00D7 && cp != 0x00F7) ||
+        (cp >= 0x1E00 && cp <= 0x1EFF) ||
+        (cp >= 0x2C60 && cp <= 0x2C7F) ||
+        (cp >= 0xA720 && cp <= 0xA7FF) ||
+        (cp >= 0xFB00 && cp <= 0xFB06) ||
+        (cp >= 0xFF21 && cp <= 0xFF3A) ||
+        (cp >= 0xFF41 && cp <= 0xFF5A) ||
+        cp == 0x00AA || cp == 0x00BA)
+        return UC_SCRIPT_LATIN;
+
+    if ((cp >= 0x1C80 && cp <= 0x1C88) ||
+        (cp >= 0x2DE0 && cp <= 0x2DFF) ||
+        (cp >= 0xA640 && cp <= 0xA69F))
+        return UC_SCRIPT_CYRILLIC;
+
+    if ((cp >= 0x1F00 && cp <= 0x1FFF) || cp == 0x00B5)
+        return UC_SCRIPT_GREEK;
+
+    if ((cp >= 0x1C90 && cp <= 0x1CBF) ||
+        (cp >= 0x2D00 && cp <= 0x2D2F))
+        return UC_SCRIPT_GEORGIAN;
+
+    return UC_SCRIPT_UNKNOWN;
 }
 
 /*
@@ -1084,9 +1158,9 @@ static int handle_cp(struct uc_ctx *c, uint32_t cp, uc_write_fn out,
 }
 
 /*
- * A confusable in a Latin word is repaired with the letter it mimics.
+ * A confusable in a word is repaired with the letter it mimics.
  */
-static int handle_confusable(struct uc_ctx *c, uint32_t cp, char ascii,
+static int handle_confusable(struct uc_ctx *c, uint32_t cp, uint32_t rep,
                              uc_write_fn out, void *arg)
 {
     c->issues++;
@@ -1094,7 +1168,15 @@ static int handle_confusable(struct uc_ctx *c, uint32_t cp, char ascii,
     switch (c->opts.mode)
     {
     case UC_MODE_CLEAR:
-        return emit(out, arg, &ascii, 1);
+    {
+        unsigned char buf[4];
+        int len = utf8_encode(rep, buf);
+
+        if (len <= 0)
+            return -1;
+
+        return emit(out, arg, (const char *)buf, (size_t)len);
+    }
 
     case UC_MODE_SHOW:
         return emit_show_cp(c, out, arg, cp);
@@ -1108,22 +1190,50 @@ static int handle_confusable(struct uc_ctx *c, uint32_t cp, char ascii,
     }
 }
 
+static int dominant_script(const struct uc_ctx *c)
+{
+    int dominant = UC_SCRIPT_UNKNOWN;
+    int max = 0;
+    int total = 0;
+    int s;
+
+    if (c->word_long)
+        return UC_SCRIPT_UNKNOWN;
+
+    for (s = 1; s < UC_SCRIPT_COUNT; s++)
+    {
+        total += c->script_counts[s];
+        if (c->script_counts[s] > max)
+        {
+            max = c->script_counts[s];
+            dominant = s;
+        }
+    }
+
+    if (max > total - max)
+        return dominant;
+
+    return UC_SCRIPT_UNKNOWN;
+}
+
 /*
- * A confusable letter inside a mostly ASCII word is a homograph.
+ * A confusable letter inside a word of a different script is a homograph.
  */
 static int flush_word(struct uc_ctx *c, uc_write_fn out, void *arg, int end)
 {
-    int mixed = !c->word_long && c->word_ascii > c->word_other;
+    int target = dominant_script(c);
     size_t i;
 
     for (i = 0; i < c->word_len; i++)
     {
         uint32_t cp = c->word[i];
-        const struct uc_homoglyph *h = mixed ? find_homoglyph(cp) : NULL;
+        uint32_t rep = (target != UC_SCRIPT_UNKNOWN && char_script(cp) != target)
+                           ? find_homoglyph(cp, target)
+                           : 0;
 
-        if (h)
+        if (rep)
         {
-            if (handle_confusable(c, cp, h->ascii, out, arg) < 0)
+            if (handle_confusable(c, cp, rep, out, arg) < 0)
                 return -1;
 
             continue;
@@ -1134,8 +1244,7 @@ static int flush_word(struct uc_ctx *c, uc_write_fn out, void *arg, int end)
     }
 
     c->word_len = 0;
-    c->word_ascii = 0;
-    c->word_other = 0;
+    memset(c->script_counts, 0, sizeof(c->script_counts));
 
     if (end)
         c->word_long = 0;
@@ -1159,11 +1268,7 @@ static int handle_letter(struct uc_ctx *c, uint32_t cp, uc_write_fn out,
     }
 
     c->word[c->word_len++] = cp;
-
-    if (is_ascii_letter(cp))
-        c->word_ascii++;
-    else
-        c->word_other++;
+    c->script_counts[char_script(cp)]++;
 
     return 0;
 }

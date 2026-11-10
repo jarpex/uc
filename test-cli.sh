@@ -170,6 +170,15 @@ check "clear repairs a confusable in a cp1251 Latin word" 0 "hello" \
 check_status "check finds a confusable in a Latin word" 1 \
   "$UC" --check "$(printf 'hell\320\276')"
 
+check "clear repairs a confusable in a Cyrillic word" 0 "$(printf '\321\202\320\265\321\201\320\260')" \
+  "$UC" -c -e cp1251 "$(printf '\321\202\320\265\321\201a')"
+
+check "show prints a confusable in a Cyrillic word" 0 "$(printf '\321\202\320\265\321\201[U+0061]')" \
+  "$UC" -s -e cp1251 "$(printf '\321\202\320\265\321\201a')"
+
+check_status "check finds a confusable in a Cyrillic word" 1 \
+  "$UC" --check -e cp1251 "$(printf '\321\202\320\265\321\201a')"
+
 # No input on a terminal prints the usage.
 if command -v script >/dev/null 2>&1; then
     case $(uname -s) in

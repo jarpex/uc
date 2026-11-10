@@ -1594,13 +1594,37 @@ int main(void)
     "aoz",
     1);
 
-  T("clear keeps a non-Latin word with one Latin letter",
+  T("clear repairs a confusable in a Cyrillic word",
     UC_MODE_CLEAR, UC_ENC_CP1251, 0,
     "\xD1\x82\xD0\xB5\xD1\x81"
     "a",
     "\xD1\x82\xD0\xB5\xD1\x81"
+    "\xD0\xB0",
+    1);
+
+  T("show prints a confusable in a Cyrillic word",
+    UC_MODE_SHOW, UC_ENC_CP1251, 0,
+    "\xD1\x82\xD0\xB5\xD1\x81"
     "a",
-    0);
+    "\xD1\x82\xD0\xB5\xD1\x81[U+0061]",
+    1);
+
+  T("highlight a confusable in a Cyrillic word",
+    UC_MODE_HIGHLIGHT, UC_ENC_CP1251, 1,
+    "\xD1\x82\xD0\xB5\xD1\x81"
+    "a",
+    "\xD1\x82\xD0\xB5\xD1\x81"
+    "\x1b[0;31m"
+    "a"
+    "\x1b[0m",
+    1);
+
+  T("clear repairs a Latin confusable in a UTF-8 Cyrillic word",
+    UC_MODE_CLEAR, UC_ENC_CP1251, 0,
+    "c"
+    "\xD0\xBB\xD0\xBE\xD0\xB2\xD0\xBE",
+    "\xD1\x81\xD0\xBB\xD0\xBE\xD0\xB2\xD0\xBE",
+    1);
 
   T("a word without a confusable is left alone",
     UC_MODE_CLEAR, UC_ENC_ASCII, 0,
