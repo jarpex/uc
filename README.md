@@ -93,8 +93,11 @@ cafe
 
 ## Example
 
-A word that mixes scripts is a homograph.  The Cyrillic `о` in `hello` is
-repaired with the ASCII letter it mimics:
+A word that mixes scripts is a homograph.  A confusable letter inside a
+mostly ASCII word is repaired with the ASCII letter it mimics.  Words from
+other scripts that contain a Latin letter are left unchanged.
+
+The Cyrillic `о` in `hello` is repaired:
 
 ```sh
 printf 'hell\320\276\n' | uc -c
