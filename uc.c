@@ -271,8 +271,12 @@ static int is_control(uint32_t cp)
  * Unicode space separators, excluding the ASCII space.
  */
 static const struct uc_range space_ranges[] = {
-    { 0x00A0, 0x00A0 }, { 0x1680, 0x1680 }, { 0x2000, 0x200A },
-    { 0x202F, 0x202F }, { 0x205F, 0x205F }, { 0x3000, 0x3000 },
+    {0x00A0, 0x00A0},
+    {0x1680, 0x1680},
+    {0x2000, 0x200A},
+    {0x202F, 0x202F},
+    {0x205F, 0x205F},
+    {0x3000, 0x3000},
 };
 
 static int is_unicode_space(uint32_t cp)
@@ -287,14 +291,30 @@ static int is_unicode_space(uint32_t cp)
  * the line and paragraph separators.
  */
 static const struct uc_range format_ranges[] = {
-    { 0x00AD, 0x00AD }, { 0x034F, 0x034F }, { 0x0600, 0x0605 },
-    { 0x061C, 0x061C }, { 0x06DD, 0x06DD }, { 0x070F, 0x070F },
-    { 0x0890, 0x0891 }, { 0x08E2, 0x08E2 }, { 0x180E, 0x180E },
-    { 0x200B, 0x200F }, { 0x2028, 0x202E }, { 0x2060, 0x2064 },
-    { 0x2066, 0x206F }, { 0xFE00, 0xFE0F }, { 0xFEFF, 0xFEFF },
-    { 0xFFF9, 0xFFFB }, { 0x110BD, 0x110BD }, { 0x110CD, 0x110CD },
-    { 0x13430, 0x1343F }, { 0x1BCA0, 0x1BCA3 }, { 0x1D173, 0x1D17A },
-    { 0xE0001, 0xE0001 }, { 0xE0020, 0xE007F }, { 0xE0100, 0xE01EF },
+    {0x00AD, 0x00AD},
+    {0x034F, 0x034F},
+    {0x0600, 0x0605},
+    {0x061C, 0x061C},
+    {0x06DD, 0x06DD},
+    {0x070F, 0x070F},
+    {0x0890, 0x0891},
+    {0x08E2, 0x08E2},
+    {0x180E, 0x180E},
+    {0x200B, 0x200F},
+    {0x2028, 0x202E},
+    {0x2060, 0x2064},
+    {0x2066, 0x206F},
+    {0xFE00, 0xFE0F},
+    {0xFEFF, 0xFEFF},
+    {0xFFF9, 0xFFFB},
+    {0x110BD, 0x110BD},
+    {0x110CD, 0x110CD},
+    {0x13430, 0x1343F},
+    {0x1BCA0, 0x1BCA3},
+    {0x1D173, 0x1D17A},
+    {0xE0001, 0xE0001},
+    {0xE0020, 0xE007F},
+    {0xE0100, 0xE01EF},
 };
 
 static int is_zero_width_or_format(uint32_t cp)
@@ -308,9 +328,15 @@ static int is_zero_width_or_format(uint32_t cp)
  * invisible and carries no meaning.
  */
 static const struct uc_range combining_ranges[] = {
-    { 0x0300, 0x036F }, { 0x0483, 0x0489 }, { 0x1AB0, 0x1AFF },
-    { 0x1DC0, 0x1DFF }, { 0x20D0, 0x20FF }, { 0x302A, 0x302F },
-    { 0x3099, 0x309A }, { 0xA66F, 0xA672 }, { 0xFE20, 0xFE2F },
+    {0x0300, 0x036F},
+    {0x0483, 0x0489},
+    {0x1AB0, 0x1AFF},
+    {0x1DC0, 0x1DFF},
+    {0x20D0, 0x20FF},
+    {0x302A, 0x302F},
+    {0x3099, 0x309A},
+    {0xA66F, 0xA672},
+    {0xFE20, 0xFE2F},
 };
 
 static int is_combining_mark(uint32_t cp)
@@ -338,42 +364,137 @@ struct uc_homoglyph
 };
 
 static const struct uc_homoglyph homoglyphs_to_latin[] = {
-    { 0x037F, 'J' }, { 0x0391, 'A' }, { 0x0392, 'B' }, { 0x0395, 'E' },
-    { 0x0396, 'Z' }, { 0x0397, 'H' }, { 0x0399, 'l' }, { 0x039A, 'K' },
-    { 0x039C, 'M' }, { 0x039D, 'N' }, { 0x039F, 'O' }, { 0x03A1, 'P' },
-    { 0x03A4, 'T' }, { 0x03A5, 'Y' }, { 0x03A7, 'X' }, { 0x03B1, 'a' },
-    { 0x03B3, 'y' }, { 0x03B9, 'i' }, { 0x03BD, 'v' }, { 0x03BF, 'o' },
-    { 0x03C1, 'p' }, { 0x03C3, 'o' }, { 0x03C5, 'u' }, { 0x03D2, 'Y' },
-    { 0x03DC, 'F' }, { 0x03ED, 'o' }, { 0x03F1, 'p' }, { 0x03F2, 'c' },
-    { 0x03F3, 'j' }, { 0x03F8, 'p' }, { 0x03F9, 'C' }, { 0x03FA, 'M' },
-    { 0x0405, 'S' }, { 0x0406, 'l' }, { 0x0408, 'J' }, { 0x0410, 'A' },
-    { 0x0412, 'B' }, { 0x0415, 'E' }, { 0x041A, 'K' }, { 0x041C, 'M' },
-    { 0x041D, 'H' }, { 0x041E, 'O' }, { 0x0420, 'P' }, { 0x0421, 'C' },
-    { 0x0422, 'T' }, { 0x0423, 'Y' }, { 0x0425, 'X' }, { 0x042C, 'b' },
-    { 0x0430, 'a' }, { 0x0433, 'r' }, { 0x0435, 'e' }, { 0x043E, 'o' },
-    { 0x0440, 'p' }, { 0x0441, 'c' }, { 0x0443, 'y' }, { 0x0445, 'x' },
-    { 0x0448, 'w' }, { 0x0455, 's' }, { 0x0456, 'i' }, { 0x0458, 'j' },
-    { 0x0461, 'w' }, { 0x0474, 'V' }, { 0x0475, 'v' }, { 0x04AE, 'Y' },
-    { 0x04AF, 'y' }, { 0x04BA, 'h' }, { 0x04BB, 'h' }, { 0x04BD, 'e' },
-    { 0x04C0, 'l' }, { 0x04CF, 'l' }, { 0x0501, 'd' }, { 0x050C, 'G' },
-    { 0x051A, 'Q' }, { 0x051B, 'q' }, { 0x051C, 'W' }, { 0x051D, 'w' },
-    { 0x054D, 'U' }, { 0x054F, 'S' }, { 0x0555, 'O' }, { 0x0561, 'w' },
-    { 0x0563, 'q' }, { 0x0566, 'q' }, { 0x0570, 'h' }, { 0x0575, 'j' },
-    { 0x0578, 'n' }, { 0x057C, 'n' }, { 0x057D, 'u' }, { 0x0581, 'g' },
-    { 0x0582, 'i' }, { 0x0584, 'f' }, { 0x0585, 'o' }, { 0x10B9, 'h' },
-    { 0x10BD, 'S' }, { 0x10CD, 'Z' }, { 0x10E7, 'y' }, { 0x10FD, 'S' },
-    { 0x10FF, 'o' }, { 0x1C82, 'o' }, { 0x1C83, 'c' }, { 0x1CBD, 'S' },
-    { 0x1CBF, 'O' }, { 0x2D2D, 'z' }, { 0xA647, 'i' },
+    {0x037F, 'J'},
+    {0x0391, 'A'},
+    {0x0392, 'B'},
+    {0x0395, 'E'},
+    {0x0396, 'Z'},
+    {0x0397, 'H'},
+    {0x0399, 'l'},
+    {0x039A, 'K'},
+    {0x039C, 'M'},
+    {0x039D, 'N'},
+    {0x039F, 'O'},
+    {0x03A1, 'P'},
+    {0x03A4, 'T'},
+    {0x03A5, 'Y'},
+    {0x03A7, 'X'},
+    {0x03B1, 'a'},
+    {0x03B3, 'y'},
+    {0x03B9, 'i'},
+    {0x03BD, 'v'},
+    {0x03BF, 'o'},
+    {0x03C1, 'p'},
+    {0x03C3, 'o'},
+    {0x03C5, 'u'},
+    {0x03D2, 'Y'},
+    {0x03DC, 'F'},
+    {0x03ED, 'o'},
+    {0x03F1, 'p'},
+    {0x03F2, 'c'},
+    {0x03F3, 'j'},
+    {0x03F8, 'p'},
+    {0x03F9, 'C'},
+    {0x03FA, 'M'},
+    {0x0405, 'S'},
+    {0x0406, 'l'},
+    {0x0408, 'J'},
+    {0x0410, 'A'},
+    {0x0412, 'B'},
+    {0x0415, 'E'},
+    {0x041A, 'K'},
+    {0x041C, 'M'},
+    {0x041D, 'H'},
+    {0x041E, 'O'},
+    {0x0420, 'P'},
+    {0x0421, 'C'},
+    {0x0422, 'T'},
+    {0x0423, 'Y'},
+    {0x0425, 'X'},
+    {0x042C, 'b'},
+    {0x0430, 'a'},
+    {0x0433, 'r'},
+    {0x0435, 'e'},
+    {0x043E, 'o'},
+    {0x0440, 'p'},
+    {0x0441, 'c'},
+    {0x0443, 'y'},
+    {0x0445, 'x'},
+    {0x0448, 'w'},
+    {0x0455, 's'},
+    {0x0456, 'i'},
+    {0x0458, 'j'},
+    {0x0461, 'w'},
+    {0x0474, 'V'},
+    {0x0475, 'v'},
+    {0x04AE, 'Y'},
+    {0x04AF, 'y'},
+    {0x04BA, 'h'},
+    {0x04BB, 'h'},
+    {0x04BD, 'e'},
+    {0x04C0, 'l'},
+    {0x04CF, 'l'},
+    {0x0501, 'd'},
+    {0x050C, 'G'},
+    {0x051A, 'Q'},
+    {0x051B, 'q'},
+    {0x051C, 'W'},
+    {0x051D, 'w'},
+    {0x054D, 'U'},
+    {0x054F, 'S'},
+    {0x0555, 'O'},
+    {0x0561, 'w'},
+    {0x0563, 'q'},
+    {0x0566, 'q'},
+    {0x0570, 'h'},
+    {0x0575, 'j'},
+    {0x0578, 'n'},
+    {0x057C, 'n'},
+    {0x057D, 'u'},
+    {0x0581, 'g'},
+    {0x0582, 'i'},
+    {0x0584, 'f'},
+    {0x0585, 'o'},
+    {0x10B9, 'h'},
+    {0x10BD, 'S'},
+    {0x10CD, 'Z'},
+    {0x10E7, 'y'},
+    {0x10FD, 'S'},
+    {0x10FF, 'o'},
+    {0x1C82, 'o'},
+    {0x1C83, 'c'},
+    {0x1CBD, 'S'},
+    {0x1CBF, 'O'},
+    {0x2D2D, 'z'},
+    {0xA647, 'i'},
 };
 
 static const struct uc_homoglyph homoglyphs_to_cyrillic[] = {
-    { 'A', 0x0410 }, { 'B', 0x0412 }, { 'C', 0x0421 }, { 'E', 0x0415 },
-    { 'H', 0x041D }, { 'I', 0x0406 }, { 'J', 0x0408 }, { 'K', 0x041A },
-    { 'M', 0x041C }, { 'O', 0x041E }, { 'P', 0x0420 }, { 'S', 0x0405 },
-    { 'T', 0x0422 }, { 'X', 0x0425 }, { 'Y', 0x0423 }, { 'a', 0x0430 },
-    { 'c', 0x0441 }, { 'e', 0x0435 }, { 'i', 0x0456 }, { 'j', 0x0458 },
-    { 'o', 0x043E }, { 'p', 0x0440 }, { 's', 0x0455 }, { 'x', 0x0445 },
-    { 'y', 0x0443 },
+    {'A', 0x0410},
+    {'B', 0x0412},
+    {'C', 0x0421},
+    {'E', 0x0415},
+    {'H', 0x041D},
+    {'I', 0x0406},
+    {'J', 0x0408},
+    {'K', 0x041A},
+    {'M', 0x041C},
+    {'O', 0x041E},
+    {'P', 0x0420},
+    {'S', 0x0405},
+    {'T', 0x0422},
+    {'X', 0x0425},
+    {'Y', 0x0423},
+    {'a', 0x0430},
+    {'c', 0x0441},
+    {'e', 0x0435},
+    {'i', 0x0456},
+    {'j', 0x0458},
+    {'o', 0x043E},
+    {'p', 0x0440},
+    {'s', 0x0455},
+    {'x', 0x0445},
+    {'y', 0x0443},
 };
 
 /*
@@ -420,37 +541,51 @@ static uint32_t find_homoglyph(uint32_t cp, int target_script)
  * Letters, to split the text into words.
  */
 static const struct uc_range letter_ranges[] = {
-    { 0x0041, 0x005A }, /* ASCII */
-    { 0x0061, 0x007A },
-    { 0x00AA, 0x00AA },
-    { 0x00B5, 0x00B5 },
-    { 0x00BA, 0x00BA },
-    { 0x00C0, 0x00D6 }, /* Latin-1 Supplement */
-    { 0x00D8, 0x00F6 },
-    { 0x00F8, 0x00FF },
-    { 0x0100, 0x024F }, /* Latin Extended-A and -B */
-    { 0x0370, 0x03FF }, /* Greek and Coptic */
-    { 0x0400, 0x052F }, /* Cyrillic */
-    { 0x0530, 0x058F }, /* Armenian */
-    { 0x10A0, 0x10FF }, /* Georgian */
-    { 0x1C80, 0x1C88 }, /* Cyrillic Extended-C */
-    { 0x1C90, 0x1CBF }, /* Georgian Extended */
-    { 0x1E00, 0x1EFF }, /* Latin Extended Additional */
-    { 0x1F00, 0x1FFF }, /* Greek Extended */
-    { 0x2C60, 0x2C7F }, /* Latin Extended-C */
-    { 0x2D00, 0x2D2F }, /* Georgian Extended */
-    { 0x2DE0, 0x2DFF }, /* Cyrillic Extended-A */
-    { 0xA640, 0xA69F }, /* Cyrillic Extended-B */
-    { 0xA720, 0xA7FF }, /* Latin Extended-D */
-    { 0xFB00, 0xFB06 }, /* Latin ligatures */
-    { 0xFF21, 0xFF3A }, /* Fullwidth Latin */
-    { 0xFF41, 0xFF5A },
+    {0x0041, 0x005A}, /* ASCII */
+    {0x0061, 0x007A},
+    {0x00AA, 0x00AA},
+    {0x00B5, 0x00B5},
+    {0x00BA, 0x00BA},
+    {0x00C0, 0x00D6}, /* Latin-1 Supplement */
+    {0x00D8, 0x00F6},
+    {0x00F8, 0x00FF},
+    {0x0100, 0x024F}, /* Latin Extended-A and -B */
+    {0x0370, 0x03FF}, /* Greek and Coptic */
+    {0x0400, 0x052F}, /* Cyrillic */
+    {0x0530, 0x058F}, /* Armenian */
+    {0x10A0, 0x10FF}, /* Georgian */
+    {0x1C80, 0x1C88}, /* Cyrillic Extended-C */
+    {0x1C90, 0x1CBF}, /* Georgian Extended */
+    {0x1E00, 0x1EFF}, /* Latin Extended Additional */
+    {0x1F00, 0x1FFF}, /* Greek Extended */
+    {0x2C60, 0x2C7F}, /* Latin Extended-C */
+    {0x2D00, 0x2D2F}, /* Georgian Extended */
+    {0x2DE0, 0x2DFF}, /* Cyrillic Extended-A */
+    {0xA640, 0xA69F}, /* Cyrillic Extended-B */
+    {0xA720, 0xA7FF}, /* Latin Extended-D */
+    {0xFB00, 0xFB06}, /* Latin ligatures */
+    {0xFF21, 0xFF3A}, /* Fullwidth Latin */
+    {0xFF41, 0xFF5A},
 };
 
 static int is_letter(uint32_t cp)
 {
     return in_ranges(cp, letter_ranges,
                      sizeof(letter_ranges) / sizeof(*letter_ranges));
+}
+
+static int is_apostrophe(uint32_t cp)
+{
+    return cp == '\'' || cp == 0x2019 || cp == 0x02BC;
+}
+
+static int is_word_char(const struct uc_ctx *c, uint32_t cp)
+{
+    if (is_letter(cp))
+        return 1;
+
+    return c->word_len > 0 && is_apostrophe(cp) &&
+           !is_apostrophe(c->word[c->word_len - 1]);
 }
 
 static int is_latin_letter(uint32_t cp)
@@ -474,40 +609,38 @@ static int is_cyrillic_letter(uint32_t cp)
  */
 static const char diacritic_latin[] =
     /* U+00C0 */ "AAAAAA.CEEEEIIII.NOOOOO..UUUUY.."
-    /* U+00E0 */ "aaaaaa.ceeeeiiii.nooooo..uuuuy.y"
-    /* U+0100 */ "AaAaAaCcCcCcCcDd..EeEeEeEeEeGgGg"
-    /* U+0120 */ "GgGgHh..IiIiIiIiI...JjKk.LlLlLl."
-    /* U+0140 */ "...NnNnNn...OoOoOo..RrRrRrSsSsSs"
-    /* U+0160 */ "SsTtTt..UuUuUuUuUuUuWwYyYZzZzZz."
-    /* U+0180 */ "................................"
-    /* U+01A0 */ "Oo.............Uu..............."
-    /* U+01C0 */ ".............AaIiOoUuUuUuUuUu.Aa"
-    /* U+01E0 */ "Aa....GgKkOoOo..j...Gg..NnAa...."
-    /* U+0200 */ "AaAaEeEeIiIiOoOoRrRrUuUuSsTt..Hh"
-    /* U+0220 */ "......AaEeOoOoOoOoYy............"
-    /* U+0240 */ "................";
+                 /* U+00E0 */ "aaaaaa.ceeeeiiii.nooooo..uuuuy.y"
+                 /* U+0100 */ "AaAaAaCcCcCcCcDd..EeEeEeEeEeGgGg"
+                 /* U+0120 */ "GgGgHh..IiIiIiIiI...JjKk.LlLlLl."
+                 /* U+0140 */ "...NnNnNn...OoOoOo..RrRrRrSsSsSs"
+                 /* U+0160 */ "SsTtTt..UuUuUuUuUuUuWwYyYZzZzZz."
+                 /* U+0180 */ "................................"
+                 /* U+01A0 */ "Oo.............Uu..............."
+                 /* U+01C0 */ ".............AaIiOoUuUuUuUuUu.Aa"
+                 /* U+01E0 */ "Aa....GgKkOoOo..j...Gg..NnAa...."
+                 /* U+0200 */ "AaAaEeEeIiIiOoOoRrRrUuUuSsTt..Hh"
+                 /* U+0220 */ "......AaEeOoOoOoOoYy............"
+                 /* U+0240 */ "................";
 
 /*
  * The same for U+1E00..U+1EFF.
  */
 static const char diacritic_extended[] =
     /* U+1E00 */ "AaBbBbBbCcDdDdDdDdDdEeEeEeEeEeFf"
-    /* U+1E20 */ "GgHhHhHhHhHhIiIiKkKkKkLlLlLlLlMm"
-    /* U+1E40 */ "MmMmNnNnNnNnOoOoOoOoPpPpRrRrRrRr"
-    /* U+1E60 */ "SsSsSsSsSsTtTtTtTtUuUuUuUuUuVvVv"
-    /* U+1E80 */ "WwWwWwWwWwXxXxYyZzZzZzhtwy......"
-    /* U+1EA0 */ "AaAaAaAaAaAaAaAaAaAaAaAaEeEeEeEe"
-    /* U+1EC0 */ "EeEeEeEeIiIiOoOoOoOoOoOoOoOoOoOo"
-    /* U+1EE0 */ "OoOoUuUuUuUuUuUuUuYyYyYyYy......";
+                 /* U+1E20 */ "GgHhHhHhHhHhIiIiKkKkKkLlLlLlLlMm"
+                 /* U+1E40 */ "MmMmNnNnNnNnOoOoOoOoPpPpRrRrRrRr"
+                 /* U+1E60 */ "SsSsSsSsSsTtTtTtTtUuUuUuUuUuVvVv"
+                 /* U+1E80 */ "WwWwWwWwWwXxXxYyZzZzZzhtwy......"
+                 /* U+1EA0 */ "AaAaAaAaAaAaAaAaAaAaAaAaEeEeEeEe"
+                 /* U+1EC0 */ "EeEeEeEeIiIiOoOoOoOoOoOoOoOoOoOo"
+                 /* U+1EE0 */ "OoOoUuUuUuUuUuUuUuYyYyYyYy......";
 
 /*
  * The table must cover the whole block, so a mistyped row cannot shift
  * the mapping.
  */
-typedef char diacritic_latin_size[
-    sizeof(diacritic_latin) == 0x0250 - 0x00C0 + 1 ? 1 : -1];
-typedef char diacritic_extended_size[
-    sizeof(diacritic_extended) == 0x1F00 - 0x1E00 + 1 ? 1 : -1];
+typedef char diacritic_latin_size[sizeof(diacritic_latin) == 0x0250 - 0x00C0 + 1 ? 1 : -1];
+typedef char diacritic_extended_size[sizeof(diacritic_extended) == 0x1F00 - 0x1E00 + 1 ? 1 : -1];
 
 /*
  * Base ASCII letter of a Latin letter with diacritics.
@@ -1211,7 +1344,7 @@ static int flush_word(struct uc_ctx *c, uc_write_fn out, void *arg, int end)
 }
 
 static int handle_letter(struct uc_ctx *c, uint32_t cp, uc_write_fn out,
-                          void *arg)
+                         void *arg)
 {
     if (c->word_len == UC_WORD_MAX)
     {
@@ -1226,6 +1359,9 @@ static int handle_letter(struct uc_ctx *c, uint32_t cp, uc_write_fn out,
     }
 
     c->word[c->word_len++] = cp;
+
+    if (is_apostrophe(cp))
+        return 0;
 
     if (is_latin_letter(cp))
         c->word_latin++;
@@ -1356,7 +1492,7 @@ int uc_feed(struct uc_ctx *c, const void *buf, size_t len,
             if (r == UTF8_STARTED)
                 continue;
 
-            if (is_letter(cp))
+            if (is_word_char(c, cp))
             {
                 if (handle_letter(c, cp, out, arg) < 0)
                     return -1;
@@ -1405,7 +1541,7 @@ int uc_feed(struct uc_ctx *c, const void *buf, size_t len,
 
             if (r == UTF8_DONE)
             {
-                if (is_letter(cp))
+                if (is_word_char(c, cp))
                 {
                     if (handle_letter(c, cp, out, arg) < 0)
                         return -1;
