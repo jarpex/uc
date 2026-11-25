@@ -1,0 +1,4 @@
+.github/** linguist-vendored
+scripts/** linguist-vendored
+test-cli.sh linguist-vendored
+uc.1 linguist-documentation
