@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define UC_VERSION "1.0.2"
+#define UC_VERSION "1.0.3"
 
 enum uc_mode {
 	UC_MODE_HIGHLIGHT,
