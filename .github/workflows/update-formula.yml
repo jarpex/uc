@@ -27,7 +27,7 @@ jobs:
 
       - name: Cache the Homebrew gems
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ steps.brew.outputs.gems-path }}
           key: ${{ runner.os }}-rubygems-${{ steps.brew.outputs.gems-hash }}
@@ -38,7 +38,7 @@ jobs:
         run: brew install-bundler-gems
 
       - name: Checkout the tap
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: jarpex/homebrew-formulae
           ref: main
@@ -46,7 +46,7 @@ jobs:
           path: tap
 
       - name: Checkout the sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.TAG }}
           path: sources
