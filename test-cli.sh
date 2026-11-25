@@ -148,6 +148,9 @@ check "fold diacritics shows the problem" 0 "[U+00E9]" \
 check "fold diacritics ascii encoding" 0 "cafe" \
   "$UC" -c -e ascii --fold-diacritics "$(printf 'caf\303\251')"
 
+check "ascii encoding folds Latin Extended diacritics without flag" 0 "ar" \
+  "$UC" -c -e ascii "$(printf '\304\201\305\231')"
+
 check_status "fold diacritics check finds problems" 1 \
   "$UC" --check -e cp1252 --fold-diacritics "$(printf 'caf\303\251')"
 

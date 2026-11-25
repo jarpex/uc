@@ -981,55 +981,15 @@ static const char *map_fold(uint32_t cp)
     case 0x2122: /* TRADE MARK SIGN */
         return "TM";
 
-    /* Latin-1 Supplement letters */
-    case 0x00C0:
-    case 0x00C1:
-    case 0x00C2:
-    case 0x00C3:
-    case 0x00C4:
-    case 0x00C5:
-        return "A";
-
+    /* Latin-1 Supplement and cp1252 letters without a diacritic base */
     case 0x00C6:
         return "AE";
-
-    case 0x00C7:
-        return "C";
-
-    case 0x00C8:
-    case 0x00C9:
-    case 0x00CA:
-    case 0x00CB:
-        return "E";
-
-    case 0x00CC:
-    case 0x00CD:
-    case 0x00CE:
-    case 0x00CF:
-        return "I";
 
     case 0x00D0:
         return "D";
 
-    case 0x00D1:
-        return "N";
-
-    case 0x00D2:
-    case 0x00D3:
-    case 0x00D4:
-    case 0x00D5:
-    case 0x00D6:
     case 0x00D8:
         return "O";
-
-    case 0x00D9:
-    case 0x00DA:
-    case 0x00DB:
-    case 0x00DC:
-        return "U";
-
-    case 0x00DD:
-        return "Y";
 
     case 0x00DE:
         return "TH";
@@ -1037,80 +997,23 @@ static const char *map_fold(uint32_t cp)
     case 0x00DF:
         return "ss";
 
-    case 0x00E0:
-    case 0x00E1:
-    case 0x00E2:
-    case 0x00E3:
-    case 0x00E4:
-    case 0x00E5:
-        return "a";
-
     case 0x00E6:
         return "ae";
-
-    case 0x00E7:
-        return "c";
-
-    case 0x00E8:
-    case 0x00E9:
-    case 0x00EA:
-    case 0x00EB:
-        return "e";
-
-    case 0x00EC:
-    case 0x00ED:
-    case 0x00EE:
-    case 0x00EF:
-        return "i";
 
     case 0x00F0:
         return "d";
 
-    case 0x00F1:
-        return "n";
-
-    case 0x00F2:
-    case 0x00F3:
-    case 0x00F4:
-    case 0x00F5:
-    case 0x00F6:
     case 0x00F8:
         return "o";
-
-    case 0x00F9:
-    case 0x00FA:
-    case 0x00FB:
-    case 0x00FC:
-        return "u";
-
-    case 0x00FD:
-    case 0x00FF:
-        return "y";
 
     case 0x00FE:
         return "th";
 
-    /* Common Latin Extended characters relevant to cp1252 */
     case 0x0152: /* LATIN CAPITAL LIGATURE OE */
         return "OE";
 
     case 0x0153: /* LATIN SMALL LIGATURE OE */
         return "oe";
-
-    case 0x0160: /* LATIN CAPITAL LETTER S WITH CARON */
-        return "S";
-
-    case 0x0161: /* LATIN SMALL LETTER S WITH CARON */
-        return "s";
-
-    case 0x0178: /* LATIN CAPITAL LETTER Y WITH DIAERESIS */
-        return "Y";
-
-    case 0x017D: /* LATIN CAPITAL LETTER Z WITH CARON */
-        return "Z";
-
-    case 0x017E: /* LATIN SMALL LETTER Z WITH CARON */
-        return "z";
 
     case 0x0192: /* LATIN SMALL LETTER F WITH HOOK */
         return "f";
@@ -1216,13 +1119,9 @@ static int handle_cp(struct uc_ctx *c, uint32_t cp, uc_write_fn out,
         if (fullwidth_to_ascii(cp, &fw))
             return emit(out, arg, &fw, 1);
 
-        if (c->opts.fold_diacritics)
-        {
-            char base = map_diacritic(cp);
-
-            if (base)
-                return emit(out, arg, &base, 1);
-        }
+        char base = map_diacritic(cp);
+        if (base)
+            return emit(out, arg, &base, 1);
 
         const char *folded = map_fold(cp);
         if (folded)

@@ -1428,6 +1428,24 @@ int main(void)
     "e",
     1);
 
+  T("clear a macron to a",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "\xC4\x81",
+    "a",
+    1);
+
+  T("clear r caron to r",
+    UC_MODE_CLEAR, UC_ENC_ASCII, 0,
+    "\xC5\x99",
+    "r",
+    1);
+
+  T("cp1252 folds disallowed a macron to a",
+    UC_MODE_CLEAR, UC_ENC_CP1252, 0,
+    "\xC4\x81",
+    "a",
+    1);
+
   T("clear c cedilla to c",
     UC_MODE_CLEAR, UC_ENC_ASCII, 0,
     "\xC3\xA7",
